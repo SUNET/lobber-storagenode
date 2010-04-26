@@ -33,7 +33,6 @@ class Options(usage.Options):
     def postOptions(self):
         log.msg("postOptions")
         u = urlparse(self['stompUrl'])
-        pprint(u)
         hostport = u.path.lstrip('/')
         (host,port) = hostport.split(':')
         if not u.scheme == 'stomp':
@@ -51,9 +50,11 @@ class MyServiceMaker(object):
         """
         Constructs a lobber storage node service
         """
-        dl = URLHandler(options['torrentDir'].rstrip(os.sep),options['script'])
+        dl = URLHandler(torrent_dir=options['torrentDir'].rstrip(os.sep),
+                        script=options['script'],
+                        lobber_key=options['lobberKey'])
 
-        torrentDownloader = TorrentDownloader(options.destinations,dl,options['lobberUrl'],options['lobberKey'])
+        torrentDownloader = TorrentDownloader(options.destinations,dl,options['lobberUrl'])
         stompService = internet.TCPClient(options['stomp_host'],options['stomp_port'],torrentDownloader)
         
         getter = {}

@@ -17,9 +17,10 @@ def _torrent_info(data):
 
 class URLHandler:
     
-    def __init__(self,torrent_dir,script):
+    def __init__(self,torrent_dir=None,script=None,lobber_key=None):
         self.torrent_dir = torrent_dir
         self.script = script
+        self.lobber_key = lobber_key
     
     def add_torrent(self,path):
         if path is not None:
@@ -43,7 +44,6 @@ class URLHandler:
             try:
                 f = feedparser.parse(data)
                 for e in f.entries:
-                    pprint(e.link)
                     self.load_url_retry(e.link.encode('ascii'))
             except Exception,e:
                 log.msg(e)
@@ -51,12 +51,12 @@ class URLHandler:
         return
     
     def load_url(self,url):
-        d = client.getPage(url)
+        d = client.getPage(url,agent="Lobber Storage Node/1.0",headers={'X_LOBBER_KEY': self.lobber_key})
         d.addCallback(self.handle_page)
         return
     
     def load_url_retry(self,url):
-        r = RetryingCall(client.getPage,url)
+        r = RetryingCall(client.getPage,url,agent="Lobber Storage Node/1.0",headers={'X_LOBBER_KEY': self.lobber_key})
         d = r.start(failureTester=TwitterFailureTester())
         d.addCallback(self.handle_page)
         return
@@ -66,12 +66,10 @@ class TorrentDownloader(StompClientFactory):
     def __init__(self,
                  destinations=["/torrent/new"],
                  url_handler=URLHandler("/tmp",None),
-                 lobber_url="http://localhost:8080",
-                 lobber_key=None):
+                 lobber_url="http://localhost:8080"):
         self.destinations = destinations
         self.url_handler = url_handler
         self.lobber_url = lobber_url
-        self.lobber_key = lobber_key
 
     def recv_connected(self, msg):
         for dst in self.destinations:
@@ -83,12 +81,6 @@ class TorrentDownloader(StompClientFactory):
         if info_hash is None:
             log.msg("Got an unknown message")
             return
-         
-        info_hash = info_hash.encode('ascii')
-    
-        key = ""
-        if self.lobber_key is not None:
-            key = "?lkey=" + self.lobber_key
              
-        url = self.lobber_url + "/" + info_hash + ".torrent" + key
+        url = self.lobber_url + "/" + info_hash.encode('ascii') + ".torrent"
         self.url_handler.load_url_retry(url)
