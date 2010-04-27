@@ -18,7 +18,8 @@ class Options(usage.Options):
         ["lobberKey", "k", None, "The Lobber application key to use"],
         ["torrentDir", "d", "torrents", "The directory where to store torrents"],
         ["lobberUrl", "u", "http://localhost:8000/torrents", "The Lobber URL prefix"],
-        ["script","s","ls -l", "The script to run on all received torrents"]
+        ["script","s","ls -l", "The script to run on all received torrents"],
+        ['lobberHost',"h", None, "The host running both STOMP and https for lobber"]
     ]
     
     def parseArgs(self,*args):
@@ -32,6 +33,10 @@ class Options(usage.Options):
 
     def postOptions(self):
         log.msg("postOptions")
+        if self['lobberHost'] is not None:
+            self['stompUrl'] = "stomp://%s:61613" % self['lobberHost']
+            self['lobberUrl'] = "https://%s" % self['lobberHost']
+            
         u = urlparse(self['stompUrl'])
         hostport = u.path.lstrip('/')
         (host,port) = hostport.split(':')
