@@ -1,5 +1,0 @@
-setup.py
-src/lobber/__init__.py
-src/lobber/retry.py
-src/lobber/storagenode.py
-src/twisted/plugins/lobberstoragenode_plugin.py
