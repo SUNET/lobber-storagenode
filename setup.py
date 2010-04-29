@@ -50,13 +50,13 @@ if __name__ == '__main__':
 
     setup(
         name="lobberstoragenode",
-        version='0.3',
+        version='0.4',
         package_dir={'': 'src'},
         description="Lobber Storage Node",
         author=__author__,
         author_email="leifj@sunet.se",
         url="http://lobber.se",
-        requires=>['stompservice','feedparser'],
+        requires=['stompservice','feedparser'],
         packages=[
             "lobber",
             "twisted.plugins",
