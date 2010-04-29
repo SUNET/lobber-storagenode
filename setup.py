@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
     setup(
         name="lobberstoragenode",
-        version='0.2',
+        version='0.3',
         package_dir={'': 'src'},
         description="Lobber Storage Node",
         author=__author__,
