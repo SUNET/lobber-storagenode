@@ -77,10 +77,10 @@ class TorrentDownloader(StompClientFactory):
 
     def recv_message(self, msg):
         body = msg.get('body').strip()
-        info_hash = json.loads(body)
-        if info_hash is None:
+        id = json.loads(body)
+        if id is None:
             log.msg("Got an unknown message")
             return
              
-        url = self.lobber_url + "/" + info_hash.encode('ascii') + ".torrent"
+        url = self.lobber_url + "/torrent/" + id.encode('ascii') + ".torrent"
         self.url_handler.load_url_retry(url)

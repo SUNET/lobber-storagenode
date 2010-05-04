@@ -1,6 +1,7 @@
 build
 *.pyc
 *.log
+*.pid
 dist
 build
 MANIFEST
