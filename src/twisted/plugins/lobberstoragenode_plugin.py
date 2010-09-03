@@ -2,7 +2,7 @@ from twisted.application import service
 from twisted.python import log
 from twisted.application import internet
 
-from lobber.storagenode import URLHandler, TorrentDownloader
+from lobber.storagenode import TransmissionURLHandler, TorrentDownloader
 from twisted.python import usage
 import os
 from urlparse import urlparse
