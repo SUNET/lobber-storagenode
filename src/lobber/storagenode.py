@@ -19,15 +19,15 @@ def _torrent_info(data):
 
 class TransmissionURLHandler:
     
-    def __init__(self,torrent_dir=None,downloads_dir="/var/lib/transmission-daemon/downloads",transmissionrpc="http://transmission:transmission@locahost:9091",lobber_key=None):
+    def __init__(self,torrent_dir=None,downloads_dir="/var/lib/transmission-daemon/downloads",rpcurl="http://transmission:transmission@locahost:9091",lobber_key=None):
         self.torrent_dir = torrent_dir
         self.downloads_dir = downloads_dir
-        self.transmissionrpc = urlparse(transmissionrpc)
+        self.rpc = urlparse(rpcurl)
         self.lobber_key = lobber_key
-        self.tc = transmissionrpc.Client(address=self.transmissionrpc.hostname,
-                                        port=self.transmissionrpc.port,
-                                        user=self.transmissionrpc.username(),
-                                        password=self.transmissionrpc.password())
+        self.tc = transmissionrpc.Client(address=self.rpc.hostname,
+                                         port=self.rpc.port,
+                                         user=self.rpc.username(),
+                                         password=self.rpc.password())
     
     def add_torrent(self,path,info_hash):
         if path is not None:
