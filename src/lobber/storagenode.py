@@ -26,8 +26,8 @@ class TransmissionURLHandler:
         self.lobber_key = lobber_key
         self.tc = transmissionrpc.Client(address=self.rpc.hostname,
                                          port=self.rpc.port,
-                                         user=self.rpc.username(),
-                                         password=self.rpc.password())
+                                         user=self.rpc.username,
+                                         password=self.rpc.password)
     
     def add_torrent(self,path,info_hash):
         if path is not None:
