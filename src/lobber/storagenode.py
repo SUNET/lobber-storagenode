@@ -7,6 +7,8 @@ import os,feedparser,json
 from BitTorrent.bencode import bdecode, bencode
 from hashlib import sha1
 from pprint import pprint
+import transmissionrpc
+from urlparse import urlparse
 
 def _torrent_info(data):
     """
@@ -17,16 +19,23 @@ def _torrent_info(data):
 
 class URLHandler:
     
-    def __init__(self,torrent_dir=None,script=None,lobber_key=None):
+    def __init__(self,torrent_dir=None,downloads_dir="/var/lib/transmission-daemon/downloads",transmissionrpc="http://transmission:transmission@locahost:9091",lobber_key=None):
         self.torrent_dir = torrent_dir
-        self.script = script
+        self.downloads_dir = downloads_dir
+        self.transmissionrpc = urlparse(transmissionrpc)
         self.lobber_key = lobber_key
     
-    def add_torrent(self,path):
+    def add_torrent_transmission(self,path,info_hash):
         if path is not None:
-            cmd = self.script.split(" ")
-            cmd.append(path)
-            call(cmd)
+            tc = transmissionrpc.Client(address=self.transmissionrpc.hostname,
+                                        port=self.transmissionrpc.port,
+                                        user=self.transmissionrpc.username(),
+                                        password=self.transmissionrpc.password())
+            dir = path+os.pathsep+info_hash
+            os.mkdir(dir)
+            #os.chown(dir, 'debian-transmission', 'debian-transmission')
+            tc.add_uri(path,download_dir=dir)
+            
     
     def handle_page(self,data):
         if data.startswith("d8:announce"):
@@ -38,7 +47,7 @@ class URLHandler:
                 f.write(data)
                 f.close()
                 log.msg("Wrote torrent with info_hash "+info_hash+" to file "+fn)
-                self.add_torrent(fn)
+                self.add_torrent_transmission(fn,info_hash)
         
         if "<rss" in data:
             try:
