@@ -19,7 +19,7 @@ def _torrent_info(data):
 
 class TransmissionURLHandler:
     
-    def __init__(self,torrent_dir=None,downloads_dir="/var/lib/transmission-daemon/downloads",rpcurl="http://transmission:transmission@locahost:9091",lobber_key=None):
+    def __init__(self,torrent_dir=None,downloads_dir="/var/lib/transmission-daemon/downloads",rpcurl="http://transmission:transmission@localhost:9091",lobber_key=None):
         self.torrent_dir = torrent_dir
         self.downloads_dir = downloads_dir
         self.rpc = urlparse(rpcurl)
