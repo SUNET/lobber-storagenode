@@ -56,7 +56,7 @@ if __name__ == '__main__':
         author=__author__,
         author_email="leifj@sunet.se",
         url="http://lobber.se",
-        requires=['stompservice','feedparser'],
+        requires=['stompservice','feedparser','transmissionrpc'],
         packages=[
             "lobber",
             "twisted.plugins",
