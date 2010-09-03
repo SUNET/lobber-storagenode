@@ -18,7 +18,6 @@ class Options(usage.Options):
         ["lobberKey", "k", None, "The Lobber application key to use"],
         ["torrentDir", "d", "torrents", "The directory where to store torrents"],
         ["lobberUrl", "u", "http://localhost:8000/torrents", "The Lobber URL prefix"],
-        ["script","s","ls -l", "The script to run on all received torrents"],
         ['lobberHost',"h", None, "The host running both STOMP and https for lobber"]
     ]
     
@@ -38,8 +37,8 @@ class Options(usage.Options):
             self['lobberUrl'] = "https://%s" % self['lobberHost']
             
         u = urlparse(self['stompUrl'])
-        hostport = u.path.lstrip('/')
-        (host,port) = hostport.split(':')
+        host = u.hostname
+        port = u.port
         if not u.scheme == 'stomp':
             raise usage.UsageError, "Not a stomp:// URL: "+self['stompUrl']
         self['stomp_host'] = host
@@ -55,9 +54,8 @@ class MyServiceMaker(object):
         """
         Constructs a lobber storage node service
         """
-        dl = URLHandler(torrent_dir=options['torrentDir'].rstrip(os.sep),
-                        script=options['script'],
-                        lobber_key=options['lobberKey'])
+        dl = TransmissionURLHandler(torrent_dir=options['torrentDir'].rstrip(os.sep),
+                                    lobber_key=options['lobberKey'])
 
         torrentDownloader = TorrentDownloader(options.destinations,dl,options['lobberUrl'])
         stompService = internet.TCPClient(options['stomp_host'],options['stomp_port'],torrentDownloader)
