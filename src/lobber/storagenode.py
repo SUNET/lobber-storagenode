@@ -17,24 +17,24 @@ def _torrent_info(data):
     info = bdecode(data)['info']
     return info['name'], sha1(bencode(info)).hexdigest()
 
-class URLHandler:
+class TransmissionURLHandler:
     
     def __init__(self,torrent_dir=None,downloads_dir="/var/lib/transmission-daemon/downloads",transmissionrpc="http://transmission:transmission@locahost:9091",lobber_key=None):
         self.torrent_dir = torrent_dir
         self.downloads_dir = downloads_dir
         self.transmissionrpc = urlparse(transmissionrpc)
         self.lobber_key = lobber_key
-    
-    def add_torrent_transmission(self,path,info_hash):
-        if path is not None:
-            tc = transmissionrpc.Client(address=self.transmissionrpc.hostname,
+        self.tc = transmissionrpc.Client(address=self.transmissionrpc.hostname,
                                         port=self.transmissionrpc.port,
                                         user=self.transmissionrpc.username(),
                                         password=self.transmissionrpc.password())
+    
+    def add_torrent(self,path,info_hash):
+        if path is not None:
             dir = path+os.pathsep+info_hash
             os.mkdir(dir)
             #os.chown(dir, 'debian-transmission', 'debian-transmission')
-            tc.add_uri(path,download_dir=dir)
+            self.tc.add_uri(path,download_dir=dir)
             
     
     def handle_page(self,data):
@@ -47,7 +47,7 @@ class URLHandler:
                 f.write(data)
                 f.close()
                 log.msg("Wrote torrent with info_hash "+info_hash+" to file "+fn)
-                self.add_torrent_transmission(fn,info_hash)
+                self.add_torrent(fn,info_hash)
         
         if "<rss" in data:
             try:
@@ -74,7 +74,7 @@ class TorrentDownloader(StompClientFactory):
 
     def __init__(self,
                  destinations=["/torrent/new"],
-                 url_handler=URLHandler("/tmp",None),
+                 url_handler=TransmissionURLHandler("/tmp"),
                  lobber_url="http://localhost:8080"):
         self.destinations = destinations
         self.url_handler = url_handler
