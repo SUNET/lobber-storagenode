@@ -24,17 +24,17 @@ class TransmissionURLHandler:
         self.downloads_dir = downloads_dir
         self.rpc = urlparse(rpcurl)
         self.lobber_key = lobber_key
-        self.tc = transmissionrpc.Client(address=self.rpc.hostname,
-                                         port=self.rpc.port,
-                                         user=self.rpc.username,
-                                         password=self.rpc.password)
     
     def add_torrent(self,path,info_hash):
         if path is not None:
+            tc = transmissionrpc.Client(address=self.rpc.hostname,
+                                        port=self.rpc.port,
+                                        user=self.rpc.username,
+                                        password=self.rpc.password)
             dir = path+os.pathsep+info_hash
             os.mkdir(dir)
             #os.chown(dir, 'debian-transmission', 'debian-transmission')
-            self.tc.add_uri(path,download_dir=dir)
+            tc.add_uri(path,download_dir=dir)
             
     
     def handle_page(self,data):
