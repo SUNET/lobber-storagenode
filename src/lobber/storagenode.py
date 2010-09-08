@@ -91,5 +91,5 @@ class TorrentDownloader(StompClientFactory):
             log.msg("Got an unknown message")
             return
              
-        url = self.lobber_url + "/torrent/" + id.encode('ascii') + ".torrent"
+        url = '%s/torrent/%d.torrent' % (self.lobber_url, id)
         self.url_handler.load_url_retry(url)
