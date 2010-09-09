@@ -31,10 +31,10 @@ class TransmissionURLHandler:
                                         port=self.rpc.port,
                                         user=self.rpc.username,
                                         password=self.rpc.password)
-            dir = path+os.pathsep+info_hash
-            os.mkdir(dir)
-            #os.chown(dir, 'debian-transmission', 'debian-transmission')
-            tc.add_uri(path,download_dir=dir)
+            directory = path+os.pathsep+info_hash
+            os.mkdir(directory)
+            #os.chown(directory, 'debian-transmission', 'debian-transmission')
+            tc.add_uri(path,download_dir=directory)
             
     
     def handle_page(self,data):
@@ -86,10 +86,10 @@ class TorrentDownloader(StompClientFactory):
 
     def recv_message(self, msg):
         body = msg.get('body').strip()
-        id = json.loads(body)
-        if id is None:
+        identity = json.loads(body)
+        if identity is None:
             log.msg("Got an unknown message")
             return
              
-        url = '%s/torrent/%d.torrent' % (self.lobber_url, id)
+        url = '%s/torrent/%d.torrent' % (self.lobber_url, identity)
         self.url_handler.load_url_retry(url)
