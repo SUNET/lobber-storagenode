@@ -160,16 +160,18 @@ class TransmissionSweeper:
     
     def remove_if_done(self,r,args,kwargs):
         if int(self.remove_limit) <= int(r['count']):
-            log.msg("Removing torrent %d" % args[0])
+            log.msg("Removing torrent %d" % args[0].id)
+            os.unlink("%s/%s.torrent" % (self.lobber.torrent_dir,args[0].hashValue))
             tc = self.transmission.client()
-            tc.remove(args[0],delete_data=True)
+            tc.remove(args[0].id,delete_data=True)
     
-    def remove_on_404(self,err,id):
+    def remove_on_404(self,err,t):
         log.msg(pformat(err.value))
         if err.value.status == '404':
-            log.msg("Removing unauthorized torrent %d" % id)
+            log.msg("Removing unauthorized torrent %d" % t.id)
+            os.unlink("%s/%s.torrent" % (self.lobber.torrent_dir,t.hashValue))
             tc = self.transmission.client()
-            tc.remove(id,delete_data=True)
+            tc.remove(t.id,delete_data=True)
     
     def clean_done(self):
         tc = self.transmission.client()
@@ -180,12 +182,12 @@ class TransmissionSweeper:
             if t.status == 'seeding':
                 self.lobber.api_call("/torrent/ihave/%s" % t.hashString)
                 if self.remove_limit > 0:
-                    self.lobber.api_call("/torrent/hazcount/%s" % t.hashString, self.remove_if_done, self.logit, t.id)
+                    self.lobber.api_call("/torrent/hazcount/%s" % t.hashString, self.remove_if_done, self.logit, t)
             
     def clean_unauthorized(self):
         tc = self.transmission.client()
         for t in tc.list().values():
-            self.lobber.api_call("/torrent/exists/%s" % t.hashString, ignore, lambda err: self.remove_on_404(err,t.id))
+            self.lobber.api_call("/torrent/exists/%s" % t.hashString, ignore, lambda err: self.remove_on_404(err,t))
                 
                 
 class TransmissionURLHandler:
