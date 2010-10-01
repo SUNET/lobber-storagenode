@@ -161,7 +161,7 @@ class TransmissionSweeper:
     def remove_if_done(self,r,args,kwargs):
         if int(self.remove_limit) <= int(r['count']):
             log.msg("Removing torrent %d" % args[0].id)
-            os.unlink("%s/%s.torrent" % (self.lobber.torrent_dir,args[0].hashValue))
+            os.unlink("%s/%s.torrent" % (self.lobber.torrent_dir,args[0].hashString))
             tc = self.transmission.client()
             tc.remove(args[0].id,delete_data=True)
     
@@ -169,7 +169,7 @@ class TransmissionSweeper:
         log.msg(pformat(err.value))
         if err.value.status == '404':
             log.msg("Removing unauthorized torrent %d" % t.id)
-            os.unlink("%s/%s.torrent" % (self.lobber.torrent_dir,t.hashValue))
+            os.unlink("%s/%s.torrent" % (self.lobber.torrent_dir,t.hashString))
             tc = self.transmission.client()
             tc.remove(t.id,delete_data=True)
     
