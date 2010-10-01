@@ -71,7 +71,10 @@ class LobberClient:
         return '%s/torrent/%d.torrent' % (self.lobber_url, identity)
 
     def json_decode(self,data):
-        return json.loads(data)
+        try:
+            return json.loads(data)
+        except ValueError:
+            return data
 
     def url(self,path):
         u = "%s%s" % (self.lobber_url,path)
@@ -162,11 +165,13 @@ class TransmissionSweeper:
             tc.remove(args[0],delete_data=True)
     
     def remove_on_404(self,err,id):
+        log.msg(pformat(err.value))
         if err.value.status == '404':
+            log.msg("Removing unauthorized torrent %d" % id)
             tc = self.transmission.client()
             tc.remove(id,delete_data=True)
     
-    def sweep(self):
+    def clean_done(self):
         tc = self.transmission.client()
         for t in tc.list().values():
             log.msg("[%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
@@ -176,7 +181,11 @@ class TransmissionSweeper:
                 self.lobber.api_call("/torrent/ihave/%s" % t.hashString)
                 if self.remove_limit > 0:
                     self.lobber.api_call("/torrent/hazcount/%s" % t.hashString, self.remove_if_done, self.logit, t.id)
-            self.lobber.api_call("/torrents/exists/%d" % t.id,ignore, lambda err: self.remove_on_404(err,t.id))
+            
+    def clean_unauthorized(self):
+        tc = self.transmission.client()
+        for t in tc.list().values():
+            self.lobber.api_call("/torrent/exists/%s" % t.hashString, ignore, lambda err: self.remove_on_404(err,t.id))
                 
                 
 class TransmissionURLHandler:

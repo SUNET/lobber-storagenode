@@ -52,7 +52,7 @@ class MyServiceMaker(object):
     tapname = 'lobberstoragenode'
     description = "A Storage Node for Lobber"
     options = Options
-    sweeper = None
+    sweepers = {}
     getter = {}
 
     def makeService(self, options):
@@ -72,8 +72,11 @@ class MyServiceMaker(object):
             self.getter[url].start(30,True)
         
         transmissionSweeper = TransmissionSweeper(lobber, transmission, remove_limit=options['removeLimit'])
-        self.sweeper = task.LoopingCall(transmissionSweeper.sweep)
-        self.sweeper.start(30,True)
+        self.sweepers['done'] = task.LoopingCall(transmissionSweeper.clean_done)
+        self.sweepers['done'].start(30,True)
+        
+        self.sweepers['unauthorized'] = task.LoopingCall(transmissionSweeper.clean_unauthorized)
+        self.sweepers['unauthorized'].start(60,True)
         
         return stompService
     
