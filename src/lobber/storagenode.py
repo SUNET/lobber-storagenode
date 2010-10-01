@@ -176,7 +176,7 @@ class TransmissionSweeper:
     def clean_done(self):
         tc = self.transmission.client()
         for t in tc.list().values():
-            log.msg("[%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
+            log.msg("clean_done [%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
             tc.start(t.id)
             tc.change(t.id,seedRatioMode=2,uploadLimited=False,downloadLimited=False)
             if t.status == 'seeding':
@@ -187,6 +187,7 @@ class TransmissionSweeper:
     def clean_unauthorized(self):
         tc = self.transmission.client()
         for t in tc.list().values():
+            log.msg("clean_unauthorized [%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
             self.lobber.api_call("/torrent/exists/%s" % t.hashString, ignore, lambda err: self.remove_on_404(err,t))
                 
                 
