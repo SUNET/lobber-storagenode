@@ -2,8 +2,7 @@ from twisted.application import service
 from twisted.python import log
 from twisted.application import internet
 
-from lobber.storagenode import TransmissionURLHandler, TorrentDownloader,\
-    LobberClient, TransmissionClient, TransmissionSweeper
+from lobber.storagenode import TorrentDownloader, LobberClient, TransmissionClient, TransmissionSweeper
 from twisted.python import usage
 import os
 from urlparse import urlparse
@@ -73,7 +72,7 @@ class MyServiceMaker(object):
             self.getter[url].start(30,True)
         
         transmissionSweeper = TransmissionSweeper(lobber, transmission, remove_limit=options['removeLimit'])
-        self.sweeper = task.LoopingCall(transmissionSweeper.check_done)
+        self.sweeper = task.LoopingCall(transmissionSweeper.sweep)
         self.sweeper.start(30,True)
         
         return stompService

@@ -12,6 +12,10 @@ from tempfile import NamedTemporaryFile
 from deluge.metafile import make_meta_file
 import shutil
 import errno
+from twisted.web.client import Agent
+from twisted.internet import reactor
+from twisted.web.http_headers import Headers
+from pprint import pformat
 
 def decode_torrent(data):
     """
@@ -37,6 +41,9 @@ def mkdir_p(path):
 
 def ignore(*args,**kwargs):
     return
+
+def logit(err):
+    log.err(err)
 
 class LobberClient:
     
@@ -69,13 +76,17 @@ class LobberClient:
     def url(self,path):
         u = "%s%s" % (self.lobber_url,path)
         return u.encode('ascii')
+    
+    def if_exists(self,id,handler):
+        return self.api_call("/torrents/exists/%d" % id,err_handler=handler)
 
-    def api_call(self,urlpath,page_handler=ignore,*args,**kwargs):
+    def api_call(self,urlpath,page_handler=ignore,err_handler=logit,*args,**kwargs):
         r = RetryingCall(client.getPage,self.url(urlpath),agent="Lobber Storage Node/1.0",headers={'X_LOBBER_KEY': self.lobber_key})
         d = r.start(failureTester=TwitterFailureTester())
         d.addCallback(self.json_decode)
+        d.addErrback(err_handler)
         d.addCallback(page_handler,args,kwargs)
-        return
+        return d
 
 class TransmissionClient:
     def __init__(self,rpcurl="http://transmission:transmission@localhost:9091",downloads_dir="/var/lib/transmission-daemon/downloads"):
@@ -150,7 +161,12 @@ class TransmissionSweeper:
             tc = self.transmission.client()
             tc.remove(args[0],delete_data=True)
     
-    def check_done(self):
+    def remove_on_404(self,err,id):
+        if err.value.status == '404':
+            tc = self.transmission.client()
+            tc.remove(id,delete_data=True)
+    
+    def sweep(self):
         tc = self.transmission.client()
         for t in tc.list().values():
             log.msg("[%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
@@ -159,7 +175,9 @@ class TransmissionSweeper:
             if t.status == 'seeding':
                 self.lobber.api_call("/torrent/ihave/%s" % t.hashString)
                 if self.remove_limit > 0:
-                    self.lobber.api_call("/torrent/hazcount/%s" % t.hashString, self.remove_if_done,t.id)
+                    self.lobber.api_call("/torrent/hazcount/%s" % t.hashString, self.remove_if_done, self.logit, t.id)
+            self.lobber.api_call("/torrents/exists/%d" % t.id,ignore, lambda err: self.remove_on_404(err,t.id))
+                
                 
 class TransmissionURLHandler:
     
