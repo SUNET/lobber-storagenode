@@ -264,6 +264,7 @@ class TorrentDownloader(StompClientFactory):
 
     def recv_connected(self, msg):
         for dst in self.destinations:
+            log.msg("Subscribe to %s" % dst)
             self.subscribe(dst)
 
     def recv_message(self, msg):
@@ -273,6 +274,7 @@ class TorrentDownloader(StompClientFactory):
             log.msg("Got an unknown message")
             return
         
+        log.msg(pformat(notice))
         for type,info in notice.iteritems():
             id = info[0]
             hashval = info[1]
