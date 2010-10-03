@@ -78,8 +78,8 @@ class MyServiceMaker(object):
         self.sweepers['done'] = task.LoopingCall(transmissionSweeper.clean_done)
         self.sweepers['done'].start(30,True)
         
-        self.sweepers['unauthorized'] = task.LoopingCall(transmissionSweeper.clean_unauthorized)
-        self.sweepers['unauthorized'].start(60,True)
+        #self.sweepers['unauthorized'] = task.LoopingCall(transmissionSweeper.clean_unauthorized)
+        #self.sweepers['unauthorized'].start(60,True)
         
         return stompService
     
