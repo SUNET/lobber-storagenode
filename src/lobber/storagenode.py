@@ -79,9 +79,6 @@ class LobberClient:
     def url(self,path):
         u = "%s%s" % (self.lobber_url,path)
         return u.encode('ascii')
-    
-    def if_exists(self,id,handler):
-        return self.api_call("/torrents/exists/%d" % id,err_handler=handler)
 
     def api_call(self,urlpath,page_handler=ignore,err_handler=logit,*args,**kwargs):
         r = RetryingCall(client.getPage,self.url(urlpath),agent="Lobber Storage Node/1.0",headers={'X_LOBBER_KEY': self.lobber_key})
@@ -244,11 +241,19 @@ class TransmissionURLHandler:
 
 class TorrentDownloader(StompClientFactory):
 
-    def __init__(self,lobber,transmission,destinations=["/torrent/add"]):
+    def __init__(self,lobber,transmission,destinations=["/torrent/notify"]):
         self.destinations = destinations
         self.url_handler = TransmissionURLHandler(lobber, transmission)
         self.lobber = lobber
         self.transmission = transmission
+
+    def remove_on_404_other(self,err,id,hashval):
+        log.msg(pformat(err.value))
+        if err.value.status == '404':
+            log.msg("Purging removed torrent %d" % id)
+            os.unlink("%s/%s.torrent" % (self.lobber.torrent_dir,hashval))
+            tc = self.transmission.client()
+            tc.remove(id,delete_data=True)
 
     def recv_connected(self, msg):
         for dst in self.destinations:
@@ -256,9 +261,19 @@ class TorrentDownloader(StompClientFactory):
 
     def recv_message(self, msg):
         body = msg.get('body').strip()
-        identity = json.loads(body)
-        if identity is None:
+        notice = json.loads(body)
+        if notice is None:
             log.msg("Got an unknown message")
             return
-             
-        self.url_handler.load_url_retry(self.lobber.torrent_url(identity))
+        
+        for type,info in notice.iteritems():
+            id = info[0]
+            hashval = info[1]
+            if type == 'add':
+                log.msg("add %d %s" % (id,hashval))
+                self.url_handler.load_url_retry(self.lobber.torrent_url(id))
+            
+            if type == 'delete':
+                log.msg("delete %d %s" % (id,hashval))
+                self.lobber.api_call("/torrent/exists/%s" % hashval, ignore, lambda err: self.remove_on_404_other(err,id,hashval))
+                    
