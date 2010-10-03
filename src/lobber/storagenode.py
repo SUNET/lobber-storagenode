@@ -260,7 +260,7 @@ class TorrentDownloader(StompClientFactory):
             if os.path.exists(fn):
                 os.unlink(fn)
             tc = self.transmission.client()
-            tc.remove(id,delete_data=True)
+            tc.remove(hashval,delete_data=True)
 
     def recv_connected(self, msg):
         for dst in self.destinations:
@@ -283,9 +283,9 @@ class TorrentDownloader(StompClientFactory):
                     log.msg("add %d %s" % (id,hashval))
                     self.url_handler.load_url_retry(self.lobber.torrent_url(id))
                 
-                #if type == 'delete':
-                #    log.msg("delete %d %s" % (id,hashval))
-                #    self.lobber.api_call("/torrent/exists/%s" % hashval, ignore, lambda err: self.remove_on_404_other(err,id,hashval))
+                if type == 'delete':
+                    log.msg("delete %d %s" % (id,hashval))
+                    self.lobber.api_call("/torrent/exists/%s" % hashval, ignore, lambda err: self.remove_on_404_other(err,id,hashval))
         except Exception,err:
             log.msg(err)
                     
