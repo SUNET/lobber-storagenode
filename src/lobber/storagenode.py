@@ -268,21 +268,24 @@ class TorrentDownloader(StompClientFactory):
             self.subscribe(dst)
 
     def recv_message(self, msg):
-        body = msg.get('body').strip()
-        notice = json.loads(body)
-        if notice is None:
-            log.msg("Got an unknown message")
-            return
-        
-        log.msg(pformat(notice))
-        for type,info in notice.iteritems():
-            id = info[0]
-            hashval = info[1]
-            if type == 'add':
-                log.msg("add %d %s" % (id,hashval))
-                self.url_handler.load_url_retry(self.lobber.torrent_url(id))
+        try:
+            body = msg.get('body').strip()
+            notice = json.loads(body)
+            if notice is None:
+                log.msg("Got an unknown message")
+                return
             
-            if type == 'delete':
-                log.msg("delete %d %s" % (id,hashval))
-                self.lobber.api_call("/torrent/exists/%s" % hashval, ignore, lambda err: self.remove_on_404_other(err,id,hashval))
+            log.msg(pformat(notice))
+            for type,info in notice.iteritems():
+                id = info[0]
+                hashval = info[1]
+                if type == 'add':
+                    log.msg("add %d %s" % (id,hashval))
+                    self.url_handler.load_url_retry(self.lobber.torrent_url(id))
+                
+                #if type == 'delete':
+                #    log.msg("delete %d %s" % (id,hashval))
+                #    self.lobber.api_call("/torrent/exists/%s" % hashval, ignore, lambda err: self.remove_on_404_other(err,id,hashval))
+        except Exception,err:
+            log.msg(err)
                     
