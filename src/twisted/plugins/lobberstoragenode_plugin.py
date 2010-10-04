@@ -2,11 +2,12 @@ from twisted.application import service
 from twisted.python import log
 from twisted.application import internet
 
-from lobber.storagenode import TorrentDownloader, LobberClient, TransmissionClient, TransmissionSweeper
+from lobber.storagenode import TorrentDownloader, LobberClient, TransmissionClient, TransmissionSweeper,\
+    DropboxWatcher
 from twisted.python import usage
 import os
 from urlparse import urlparse
-from twisted.internet import task
+from twisted.internet import task, reactor
 from zope.interface.declarations import implements
 from twisted.plugin import IPlugin
 import sys
@@ -21,7 +22,13 @@ class Options(usage.Options):
         ['lobberHost',"h", None, "The host running both STOMP and https for lobber"],
         ['transmissionRpc','T',"http://transmission:transmission@localhost:9091","The RPC URL for transmission"],
         ['transmissionDownloadsDir','D',"/var/lib/transmission-daemon/downloads","The downloads directory for transmission"],
-        ['removeLimit','r',0,"Remove torrent and data when this many other storage-nodes have the data (0=never remove)"]
+        ['removeLimit','r',0,"Remove torrent and data when this many other storage-nodes have the data (0=never remove)"],
+        ['dropbox','D',None,"A directory to watch for new content"],
+        ['acl','A',None,"Access Control List to apply to new torrents"]
+    ]
+    
+    optFlags = [
+        ['register','R',"Register new torrents with lobber"]
     ]
     
     def parseArgs(self,*args):
@@ -49,14 +56,18 @@ class Options(usage.Options):
             raise usage.UsageError, "Not a stomp:// URL: "+self['stompUrl']
         self['stomp_host'] = host
         self['stomp_port'] = int(port)
+        
+        if self['dropbox'] and not os.path.isdir(self['dropbox']):
+            raise usage.UsageError, "Dropbox does not exist or is not a directory: %s" % self['dropbox']
 
 class MyServiceMaker(object):
     implements(service.IServiceMaker, IPlugin)
     tapname = 'lobberstoragenode'
     description = "A Storage Node for Lobber"
     options = Options
-    sweepers = {}
+    sweeper = None
     getter = {}
+    dropbox = None
 
     def makeService(self, options):
         """
@@ -75,11 +86,13 @@ class MyServiceMaker(object):
             self.getter[url].start(30,True)
         
         transmissionSweeper = TransmissionSweeper(lobber, transmission, remove_limit=options['removeLimit'])
-        self.sweepers['done'] = task.LoopingCall(transmissionSweeper.clean_done)
-        self.sweepers['done'].start(30,True)
-        
-        #self.sweepers['unauthorized'] = task.LoopingCall(transmissionSweeper.clean_unauthorized)
-        #self.sweepers['unauthorized'].start(60,True)
+        self.sweeper = task.LoopingCall(transmissionSweeper.clean_done)
+        self.sweeper.start(30,True)
+
+        if options['dropbox']:
+            dropboxWatcher = DropboxWatcher(lobber,transmission,options['dropbox'],register=options['register'],acl=options['acl'])
+            self.dropbox = task.LoopingCall(dropboxWatcher.watch_dropbox)
+            self.dropbox.start(5,True)
         
         return stompService
     

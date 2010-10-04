@@ -16,6 +16,14 @@ from twisted.web.client import Agent
 from twisted.internet import reactor
 from twisted.web.http_headers import Headers
 from pprint import pformat
+import time
+import itertools
+import mimetools
+import mimetypes
+from cStringIO import StringIO
+from datetime import timedelta
+from datetime import date
+import socket
 
 def decode_torrent(data):
     """
@@ -27,7 +35,6 @@ def decode_torrent(data):
 def read_torrent(torrent_file):
     tfile = file(torrent_file)
     return decode_torrent(tfile.read())
-
 
 def mkdir_p(path):
     try:
@@ -45,6 +52,69 @@ def ignore(*args,**kwargs):
 def logit(err):
     log.err(err)
 
+class MultiPartForm(object):
+    """Accumulate the data to be used when posting a form."""
+
+    def __init__(self):
+        self.form_fields = []
+        self.files = []
+        self.boundary = mimetools.choose_boundary()
+        return
+    
+    def get_content_type(self):
+        return 'multipart/form-data; boundary=%s' % self.boundary
+
+    def add_field(self, name, value):
+        """Add a simple field to the form data."""
+        self.form_fields.append((name, value))
+        return
+
+    def add_file(self, fieldname, filename, fileHandle, mimetype=None):
+        """Add a file to be uploaded."""
+        body = fileHandle.read()
+        if mimetype is None:
+            mimetype = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+        self.files.append((fieldname, filename, mimetype, body))
+        return
+    
+    def __str__(self):
+        """Return a string representing the form data, including attached files."""
+        # Build a list of lists, each containing "lines" of the
+        # request.  Each part is separated by a boundary string.
+        # Once the list is built, return a string where each
+        # line is separated by '\r\n'.  
+        parts = []
+        part_boundary = '--' + self.boundary
+        
+        # Add the form fields
+        parts.extend(
+            [ part_boundary,
+              'Content-Disposition: form-data; name="%s"' % name,
+              '',
+              value,
+            ]
+            for name, value in self.form_fields
+            )
+        
+        # Add the files to upload
+        parts.extend(
+            [ part_boundary,
+              'Content-Disposition: file; name="%s"; filename="%s"' % \
+                 (field_name, filename),
+              'Content-Type: %s' % content_type,
+              '',
+              body,
+            ]
+            for field_name, filename, content_type, body in self.files
+            )
+        
+        # Flatten the list and add closing boundary marker,
+        # then return CR+LF separated data
+        flattened = list(itertools.chain(*parts))
+        flattened.append('--' + self.boundary + '--')
+        flattened.append('')
+        return '\r\n'.join(flattened)
+
 class LobberClient:
     
     def __init__(self,lobber_url="http://localhost:8000",lobber_key=None,torrent_dir="/tmp/lobber-torrents",announce_url=None):
@@ -55,37 +125,39 @@ class LobberClient:
         mkdir_p(self.torrent_dir)
         
     def make_torrent(self,datapath,name=None,comment=None,expires=None):
-        tmptf = NamedTemporaryFile()
+        tmptf = NamedTemporaryFile(delete=False)
         datafile = file(datapath)
-        if comment == None:
-            comment = "%s" % name
-        if name == None:
-            name = datafile.name
         
-        make_meta_file(name,self.announce_url, 2**18, comment=comment, target=tmptf)
+        if name is None:
+            (head,tail) = os.path.split(datapath)
+            name = tail
+        if comment is None:
+            comment = "%s" % name
+        
+        log.msg("Writing torrent file to %s" % tmptf.name)
+        make_meta_file(datapath,self.announce_url, 2**18, comment=comment, target=tmptf.name)
         torrent_file = tmptf.name
+        log.msg("Made torrent file %s" % tmptf.name)
         
         return read_torrent(torrent_file), torrent_file
 
     def torrent_url(self,identity):
         return '%s/torrent/%d.torrent' % (self.lobber_url, identity)
 
-    def json_decode(self,data):
-        try:
-            return json.loads(data)
-        except ValueError:
-            return data
-
     def url(self,path):
         u = "%s%s" % (self.lobber_url,path)
         return u.encode('ascii')
 
-    def api_call(self,urlpath,page_handler=ignore,err_handler=logit,*args,**kwargs):
-        r = RetryingCall(client.getPage,self.url(urlpath),agent="Lobber Storage Node/1.0",headers={'X_LOBBER_KEY': self.lobber_key})
+    def api_call(self,urlpath,page_handler=ignore,err_handler=logit,method='GET',content_type='text/html',body=None):
+        r = RetryingCall(client.getPage,
+                         self.url(urlpath),
+                         method=method,
+                         postdata=body,
+                         agent="Lobber Storage Node/1.0",
+                         headers={'X_LOBBER_KEY': self.lobber_key, 'Content-Type': content_type})
         d = r.start(failureTester=TwitterFailureTester())
-        d.addCallback(self.json_decode)
         d.addErrback(err_handler)
-        d.addCallback(page_handler,args,kwargs)
+        d.addCallback(page_handler)
         return d
 
 class TransmissionClient:
@@ -144,8 +216,12 @@ class TransmissionClient:
         try:
             status = tc.add_uri(torrent_file,download_dir=dst)
         except transmissionrpc.transmission.TransmissionError,msg:
+            
+            if "duplcate" in msg:
+                status = tc.verify(info_hash) ## Dirty hack - should look for torrent before adding!
+                
             status = msg
-            log.msg(msg)
+            log.msg(status)
             pass
         return torrent_name, info_hash, dst, status
 
@@ -155,14 +231,20 @@ class TransmissionSweeper:
         self.lobber = lobber
         self.remove_limit = remove_limit
     
-    def remove_if_done(self,r,args,kwargs):
-        if int(self.remove_limit) <= int(r['count']):
-            log.msg("Removing torrent %d" % args[0].id)
-            fn = "%s/%s.torrent" % (self.lobber.torrent_dir,args[0].hashString)
-            if os.path.exists(fn):
-                os.unlink(fn)
-            tc = self.transmission.client()
-            tc.remove(args[0].id,delete_data=True)
+    def remove_if_done(self,data,id,hashString):
+        if data:
+            try:
+                r = json.loads(data)
+                log.msg("remove_if_done: %s" % pformat(r))
+                if int(self.remove_limit) <= int(r['count']):
+                    log.msg("Removing torrent %d" % id)
+                    fn = "%s/%s.torrent" % (self.lobber.torrent_dir,hashString)
+                    if os.path.exists(fn):
+                        os.unlink(fn)
+                    tc = self.transmission.client()
+                    tc.remove(id,delete_data=True)
+            except Exception,err:
+                log.msg(err)
     
     def remove_on_404(self,err,t):
         log.msg(pformat(err.value))
@@ -183,14 +265,14 @@ class TransmissionSweeper:
             if t.status == 'seeding':
                 self.lobber.api_call("/torrent/ihave/%s" % t.hashString)
                 if self.remove_limit > 0:
-                    self.lobber.api_call("/torrent/hazcount/%s" % t.hashString, self.remove_if_done, self.logit, t)
-            self.lobber.api_call("/torrent/exists/%s" % t.hashString, ignore, lambda err: self.remove_on_404(err,t))
+                    self.lobber.api_call("/torrent/hazcount/%s" % t.hashString, page_handler=lambda page: self.remove_if_done(page,t.id,t.hashString), err_handler=logit)
+            self.lobber.api_call("/torrent/exists/%s" % t.hashString, err_handler=lambda err: self.remove_on_404(err,t))
             
     def clean_unauthorized(self):
         tc = self.transmission.client()
         for t in tc.list().values():
             log.msg("clean_unauthorized [%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
-            self.lobber.api_call("/torrent/exists/%s" % t.hashString, ignore, lambda err: self.remove_on_404(err,t))
+            self.lobber.api_call("/torrent/exists/%s" % t.hashString, lambda err: self.remove_on_404(err,t))
                 
                 
 class TransmissionURLHandler:
@@ -228,6 +310,8 @@ class TransmissionURLHandler:
                     if not os.path.exists(fn):
                         log.msg("adding %s from %s" % (t['label'],fn))
                         self.load_url_retry("%s%s.torrent" % (self.lobber.lobber_url,t['link']))
+            except ValueError:
+                pass
             except Exception,e:
                 log.msg(e)
             
@@ -285,7 +369,64 @@ class TorrentDownloader(StompClientFactory):
                 
                 if type == 'delete':
                     log.msg("delete %d %s" % (id,hashval))
-                    self.lobber.api_call("/torrent/exists/%s" % hashval, ignore, lambda err: self.remove_on_404_other(err,id,hashval))
+                    self.lobber.api_call("/torrent/exists/%s" % hashval,err_handler=lambda err: self.remove_on_404_other(err,id,hashval))
         except Exception,err:
             log.msg(err)
+              
+              
+class DropboxWatcher:
+    
+    def __init__(self,lobber,transmission,dropbox,register=True,acl=None,publicAccess=False):
+        self.lobber = lobber
+        self.transmission = transmission
+        self.dropbox = dropbox
+        self.register = register
+        self.acl = acl
+        self.publicAccess = publicAccess
+    
+    def kill_torrent(self,err,torrent_file_name):
+        log.msg("an error occured - %s - cancelling torrent upload" % pformat(err))
+        os.unlink(torrent_file_name)
+        
+    def start_torrent(self,data,torrent_file,data_file):
+        log.msg("starting torrent...")
+        log.msg(data)
+        self.transmission.upload(torrent_file,data_file,move=True)
+        os.unlink(torrent_file)
+        
+    def watch_dropbox(self):
+        try:
+            for fn in os.listdir(self.dropbox):
+                tfn = "%s%s%s.torrent" % (self.dropbox,os.sep,fn)
+                dfn = "%s%s%s" % (self.dropbox,os.sep,fn)
+                log.msg("found %s" % dfn)
+                if not fn.endswith(".torrent") and not os.path.exists(tfn):     
+                    log.msg("making torrent from %s" % dfn)
+                    log.msg(pformat(dfn))
+                    torrent,torrent_file_name = self.lobber.make_torrent(dfn)
+                    log.msg("renamed %s to %s" % (torrent_file_name,tfn))
+                    shutil.move(torrent_file_name,tfn)
                     
+                    if self.register:
+                        form = MultiPartForm()
+                        form.add_field("description","Uploaded by lobber storagenode on %s" % socket.getfqdn(socket.gethostname()))
+                        form.add_field("expires",(timedelta(+10)+date.today()).isoformat())
+                        t = "0"
+                        if self.publicAccess:
+                            t = "1"
+                        form.add_field("publicAccess",t)
+                        form.add_field("acl",self.acl)
+                        form.add_file("file", tfn, file(tfn), "application/x-bittorrent")     
+                        log.msg("registering torrent with lobber")
+                        log.msg(form.__str__())
+                        self.lobber.api_call("/torrent/add.json",
+                                             method='POST',
+                                             content_type=form.get_content_type(),
+                                             body=form.__str__(),
+                                             err_handler=lambda err: self.kill_torrent(err,tfn),
+                                             page_handler=lambda page: self.start_torrent(page,tfn,dfn))
+                    else:
+                        self.start_torrent("",tfn,dfn)
+        except Exception, err:
+            log.msg(err)
+            raise
