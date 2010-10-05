@@ -2,8 +2,7 @@ from twisted.application import service
 from twisted.python import log
 from twisted.application import internet
 
-from lobber.storagenode import TorrentDownloader, LobberClient, TransmissionClient, TransmissionSweeper,\
-    DropboxWatcher
+from lobber.storagenode import TorrentDownloader, LobberClient, TransmissionClient, TransmissionSweeper, DropboxWatcher
 from twisted.python import usage
 import os
 from urlparse import urlparse
