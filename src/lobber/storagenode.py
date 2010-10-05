@@ -1,6 +1,5 @@
 from lobber.retry import TwitterFailureTester, RetryingCall
 from twisted.python import log
-from subprocess import call
 from twisted.web import client
 from stompservice import StompClientFactory
 import os,feedparser,json
@@ -12,15 +11,10 @@ from tempfile import NamedTemporaryFile
 from deluge.metafile import make_meta_file
 import shutil
 import errno
-from twisted.web.client import Agent
-from twisted.internet import reactor
-from twisted.web.http_headers import Headers
 from pprint import pformat
-import time
 import itertools
 import mimetools
 import mimetypes
-from cStringIO import StringIO
 from datetime import timedelta
 from datetime import date
 import socket
@@ -128,7 +122,6 @@ class LobberClient:
         
     def make_torrent(self,datapath,name=None,comment=None,expires=None):
         tmptf = NamedTemporaryFile(delete=False)
-        datafile = file(datapath)
         
         if name is None:
             (head,tail) = os.path.split(datapath)
@@ -244,6 +237,7 @@ class TransmissionSweeper:
                         os.unlink(fn)
                     tc = self.transmission.client()
                     tc.remove(id,delete_data=True)
+                    shutil.rmtree(self.transmission.unique_path(hashString), True)
             except Exception,err:
                 log.msg(err)
     
@@ -256,6 +250,7 @@ class TransmissionSweeper:
                 os.unlink(fn)
             tc = self.transmission.client()
             tc.remove(t.id,delete_data=True)
+            shutil.rmtree(self.transmission.unique_path(t.hashString), True)
     
     def clean_done(self):
         tc = self.transmission.client()
