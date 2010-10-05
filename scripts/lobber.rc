@@ -20,8 +20,18 @@ if [ -f /etc/defaults/lobber ]; then
    . /etc/defaults/lobber
 fi
 
+L_OPTS="$L_LOG --pidfile $L_PIDDIR/$L_PIDFILE lobberstoragenode"
+
 if [ "x$L_KEY" != "x" ]; then
-   L_AUTH="-k $L_KEY"
+   L_OPTS="${L_OPTS} -k $L_KEY"
+fi
+
+if [ "x$L_HOST" != "x" ]; then
+   L_OPTS="${L_OPTS} -h $L_HOST"
+fi
+
+if [ "x$L_TORRENTS" != "x" ]; then
+   L_OPTS="${L_OPTS} -d $L_TORRENTS"
 fi
 
 case "$1" in
@@ -38,14 +48,7 @@ case "$1" in
      chown $L_USER:$L_GROUP_PERM $L_PIDDIR
      chmod 770 $L_PIDDIR
 
-     sudo -u $L_USER twistd \
-         $L_LOG \
-         --pidfile $L_PIDDIR/$L_PIDFILE \
-         lobberstoragenode \
-         $L_AUTH
-         -h $L_HOST \
-         -d $L_TORRENTS \
-          $L_URLS
+     sudo -u $L_USER twistd $L_OPTS $L_URLS
      ;;
    stop)
 	kill `cat $L_PIDDIR/$L_PIDFILE`
