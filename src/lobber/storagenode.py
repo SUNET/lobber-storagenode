@@ -38,7 +38,8 @@ def read_torrent(torrent_file):
 
 def mkdir_p(path):
     try:
-        os.makedirs(path)
+        if not os.path.isdir(path):
+            os.makedirs(path)
     except OSError as exc: # Python >2.5
         if exc.errno == errno.EEXIST:
             pass
@@ -122,6 +123,7 @@ class LobberClient:
         self.lobber_key = lobber_key
         self.torrent_dir = torrent_dir
         self.announce_url = announce_url
+        
         mkdir_p(self.torrent_dir)
         
     def make_torrent(self,datapath,name=None,comment=None,expires=None):
