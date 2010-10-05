@@ -267,6 +267,8 @@ class TransmissionSweeper:
                 self.lobber.api_call("/torrent/ihave/%s" % t.hashString)
                 if self.remove_limit > 0:
                     self.lobber.api_call("/torrent/hazcount/%s" % t.hashString, page_handler=lambda page: self.remove_if_done(page,t.id,t.hashString), err_handler=logit)
+            else:
+                tc.reannounce(t.id)
             self.lobber.api_call("/torrent/exists/%s" % t.hashString, err_handler=lambda err: self.remove_on_404(err,t))
             
     def clean_unauthorized(self):
