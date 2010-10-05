@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+#L_KEY=secretkey123456789
+L_TORRENTS=/var/run/lobber
+L_USER=debian-transmission
+L_GROUP_PERM=debian-transmission
+L_PIDDIR=/var/run/lobber-storagenode
+L_PIDFILE=lobber-storagenode.pid
+L_LOG=--syslog
+# SEEDER="transmission-remote -n transmission:transmission -a"
+# --torrent-done-script FILE
+
+if [ -f /etc/config.d/lobber ]; then
+   . /etc/config.d/lobber
+fi
+
+if [ -f /etc/defaults/lobber ]; then
+   . /etc/defaults/lobber
+fi
+
+case "$1" in
+  start)
+
+     transmission-remote -n transmission:transmission -GSR #seed forever
+     transmission-remote -n transmission:transmission -t all -s #start all (just in case)
+
+     [ -d $L_TORRENTS ] || mkdir -p $L_TORRENTS
+     chown $L_USER:$L_GROUP_PERM $L_TORRENTS
+     chmod 770 $L_TORRENTS
+
+     [ -d $L_PIDDIR ] || mkdir $L_PIDDIR
+     chown $L_USER:$L_GROUP_PERM $L_PIDDIR
+     chmod 770 $L_PIDDIR
+
+     sudo -u $L_USER twistd \
+         $L_LOG \
+         --pidfile $L_PIDDIR/$L_PIDFILE \
+         lobberstoragenode \
+         -k $L_KEY \
+         -h beta.lobber.se \
+         -d $L_TORRENTS \
+          https://beta.lobber.se/torrent/all.json
+
+     ;;
+   stop)
+	kill `cat $L_PIDDIR/$L_PIDFILE`
+        ;;
+   *)
+        echo "Usage: /etc/init.d/lobber {start|stop}"
+        exit 1
+        ;;
+esac
