@@ -214,22 +214,17 @@ class TransmissionClient:
             dst = parent
 
         tc = self.client()
-        status = None
         try:
-            status = tc.add_uri(torrent_file,download_dir=dst)
+            tc.add_uri(torrent_file,download_dir=dst)
         except transmissionrpc.transmission.TransmissionError,msg:            
-            status = msg
-            log.msg(status)
-            pass
+            log.msg(msg)
         
         try:
-            status = tc.verify(info_hash)
+            tc.verify(info_hash)
         except transmissionrpc.transmission.TransmissionError,msg:
-            status = msg
-            log.msg(status)
-            pass
+            log.msg(msg)
         
-        return torrent_name, info_hash, dst, status
+        return torrent_name, info_hash, dst
 
 class TransmissionSweeper:
     def __init__(self,lobber,transmission, remove_limit=0):
