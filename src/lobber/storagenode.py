@@ -217,14 +217,18 @@ class TransmissionClient:
         status = None
         try:
             status = tc.add_uri(torrent_file,download_dir=dst)
-        except transmissionrpc.transmission.TransmissionError,msg:
-            
-            if "duplcate" in msg:
-                status = tc.verify(info_hash) ## Dirty hack - should look for torrent before adding!
-                
+        except transmissionrpc.transmission.TransmissionError,msg:            
             status = msg
             log.msg(status)
             pass
+        
+        try:
+            status = tc.verify(info_hash)
+        except transmissionrpc.transmission.TransmissionError,msg:
+            status = msg
+            log.msg(status)
+            pass
+        
         return torrent_name, info_hash, dst, status
 
 class TransmissionSweeper:
