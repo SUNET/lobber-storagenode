@@ -220,10 +220,11 @@ class TransmissionClient:
         return torrent_name, info_hash, dst
 
 class TransmissionSweeper:
-    def __init__(self,lobber,transmission, remove_limit=0):
+    def __init__(self,lobber,transmission, remove_limit=0, entitlement="urn:x-lobber:storagenode"):
         self.transmission = transmission
         self.lobber = lobber
         self.remove_limit = remove_limit
+        self.entitlement = entitlement
     
     def remove_if_done(self,data,id,hashString):
         if data:
@@ -259,9 +260,11 @@ class TransmissionSweeper:
             tc.start(t.id)
             tc.change(t.id,seedRatioMode=2,uploadLimited=False,downloadLimited=False)
             if t.status == 'seeding':
-                self.lobber.api_call("/torrent/ihave/%s" % t.hashString)
+                self.lobber.api_call("/torrent/ihaz/%s" % t.hashString)
                 if self.remove_limit > 0:
-                    self.lobber.api_call("/torrent/hazcount/%s" % t.hashString, page_handler=lambda page: self.remove_if_done(page,t.id,t.hashString), err_handler=logit)
+                    self.lobber.api_call("/torrent/hazcount/%s/%s" % (t.hashString,self.entitlement), 
+                                         page_handler=lambda page: self.remove_if_done(page,t.id,t.hashString), 
+                                         err_handler=logit)
             else:
                 tc.reannounce(t.id)
             self.lobber.api_call("/torrent/exists/%s" % t.hashString, err_handler=lambda err: self.remove_on_404(err,t))
