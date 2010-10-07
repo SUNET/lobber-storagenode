@@ -260,7 +260,7 @@ class TransmissionSweeper:
             tc.start(t.id)
             tc.change(t.id,seedRatioMode=2,uploadLimited=False,downloadLimited=False)
             if t.status == 'seeding':
-                self.lobber.api_call("/torrent/ihaz/%s" % t.hashString)
+                self.lobber.api_call("/torrent/ihaz/%s/%s" % (t.hashString,self.entitlement))
                 if self.remove_limit > 0:
                     self.lobber.api_call("/torrent/hazcount/%s/%s" % (t.hashString,self.entitlement), 
                                          page_handler=lambda page: self.remove_if_done(page,t.id,t.hashString), 
