@@ -48,6 +48,7 @@ case "$1" in
      chown $L_USER:$L_GROUP_PERM $L_PIDDIR
      chmod 770 $L_PIDDIR
 
+     cd $L_PIDDIR
      sudo -u $L_USER twistd $L_OPTS $L_URLS
      ;;
    stop)
