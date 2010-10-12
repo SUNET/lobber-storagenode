@@ -82,6 +82,7 @@ from twisted.internet.protocol import error
 class TwitterFailureTester(object):
     okErrs = (http.INTERNAL_SERVER_ERROR,
               http.BAD_GATEWAY,
+              http.BAD_REQUEST,
               http.SERVICE_UNAVAILABLE)
 
     def __init__(self):
