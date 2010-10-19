@@ -18,6 +18,8 @@ import mimetypes
 from datetime import timedelta
 from datetime import date
 import socket
+from twisted.web.proxy import ReverseProxyResource
+from twisted.internet import reactor
 
 def decode_torrent(data):
     """
@@ -266,7 +268,9 @@ class TransmissionSweeper:
                                          page_handler=lambda page: self.remove_if_done(page,t.id,t.hashString), 
                                          err_handler=logit)
             else:
+                log.msg("nobody is talking to %d - re-announcing it" % t.id)
                 tc.reannounce(t.id)
+                
             self.lobber.api_call("/torrent/exists/%s" % t.hashString, err_handler=lambda err: self.remove_on_404(err,t))
             
     def clean_unauthorized(self):
@@ -431,3 +435,12 @@ class DropboxWatcher:
         except Exception, err:
             log.msg(err)
             raise
+        
+class TrackerProxyResource(ReverseProxyResource):
+    def __init__(self, host, port, path, reactor=reactor,lobberkey=None):
+        self.lobberkey = lobberkey
+        return ReverseProxyResource.__init__(self,host,port,path,reactor)
+        
+    def render(self,request):
+        request.setHeader("X_LOBBER_KEY",self.lobberkey)
+        return ReverseProxyResource.render(self,request)
