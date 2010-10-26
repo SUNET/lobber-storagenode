@@ -260,7 +260,7 @@ class TransmissionSweeper:
         for t in tc.list().values():
             log.msg("clean_done [%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
             tc.reannounce(t.id)
-            tc.change(t.id,seedRatioMode=2,uploadLimited=False,downloadLimited=False,seedIdleMode=2)
+            tc.change(t.id,seedRatioMode=2,uploadLimited=False,downloadLimited=False)
             if t.status == 'seeding':
                 self.lobber.api_call("/torrent/ihaz/%s" % t.hashString)
                 if self.remove_limit > 0:
