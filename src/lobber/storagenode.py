@@ -259,6 +259,7 @@ class TransmissionSweeper:
         tc = self.transmission.client()
         for t in tc.list().values():
             log.msg("clean_done [%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
+            tc.stop(t.id)
             tc.start(t.id)
             tc.change(t.id,seedRatioMode=2,uploadLimited=False,downloadLimited=False)
             if t.status == 'seeding':
@@ -267,9 +268,6 @@ class TransmissionSweeper:
                     self.lobber.api_call("/torrent/hazcount/%s/%s" % (t.hashString,self.entitlement), 
                                          page_handler=lambda page: self.remove_if_done(page,t.id,t.hashString), 
                                          err_handler=logit)
-            else:
-                log.msg("nobody is talking to %d - re-announcing it" % t.id)
-                tc.reannounce(t.id)
                 
             self.lobber.api_call("/torrent/exists/%s" % t.hashString, err_handler=lambda err: self.remove_on_404(err,t))
             
