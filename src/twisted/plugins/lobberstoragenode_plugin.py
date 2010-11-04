@@ -2,8 +2,7 @@ from twisted.application import service
 from twisted.python import log
 from twisted.application import internet
 
-from lobber.storagenode import TorrentDownloader, LobberClient, TransmissionClient, TransmissionSweeper, DropboxWatcher,\
-    TrackerProxyResource
+from lobber.storagenode import TorrentDownloader, LobberClient, TransmissionClient, TransmissionSweeper, DropboxWatcher
 from twisted.python import usage
 import os
 from urlparse import urlparse
@@ -12,6 +11,8 @@ from zope.interface.declarations import implements
 from twisted.plugin import IPlugin
 import sys
 from twisted.web import server
+from pprint import pprint
+from lobber.proxy import ReverseProxyTLSResource
 
 class Options(usage.Options):
 
@@ -95,8 +96,11 @@ class MyServiceMaker(object):
             self.dropbox = task.LoopingCall(dropboxWatcher.watch_dropbox)
             self.dropbox.start(5,True)
         
-        proxy = server.Site(TrackerProxyResource('beta.lobber.se', 80, '', options['lobberKey']))
-        reactor.listenTCP(8080, proxy)     
+        u = urlparse(options['lobberUrl'])
+        pprint(u)
+        tls = (u.scheme == 'https')
+        proxy = server.Site(ReverseProxyTLSResource(u.hostname, u.port, '',tls=tls, headers={'X_LOBBER_KEY': options['lobberKey']}))
+        reactor.listenTCP(8080, proxy,interface='127.0.0.1')
         return stompService
     
 serviceMaker = MyServiceMaker()

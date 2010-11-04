@@ -11,15 +11,15 @@ from tempfile import NamedTemporaryFile
 from deluge.metafile import make_meta_file
 import shutil
 import errno
-from pprint import pformat
+from pprint import pformat, pprint
 import itertools
 import mimetools
 import mimetypes
 from datetime import timedelta
 from datetime import date
 import socket
-from twisted.web.proxy import ReverseProxyResource
 from twisted.internet import reactor
+from lobber.proxy import ReverseProxyTLSResource
 
 def decode_torrent(data):
     """
@@ -432,12 +432,3 @@ class DropboxWatcher:
         except Exception, err:
             log.msg(err)
             raise
-        
-class TrackerProxyResource(ReverseProxyResource):
-    def __init__(self, host, port, path, reactor=reactor,lobberkey=None):
-        self.lobberkey = lobberkey
-        return ReverseProxyResource.__init__(self,host,port,path,reactor)
-        
-    def render(self,request):
-        request.setHeader("X_LOBBER_KEY",self.lobberkey)
-        return ReverseProxyResource.render(self,request)
