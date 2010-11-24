@@ -21,6 +21,8 @@ class Options(usage.Options):
         ["torrentDir", "d", "torrents", "The directory where to store torrents"],
         ["lobberUrl", "u", "http://localhost:8000", "The Lobber URL prefix"],
         ['lobberHost',"h", None, "The host running both STOMP and https for lobber"],
+        ['trackerProxyTrackerUrl', 'p', None, "Enable tracker proxying for given https tracker (HOST:PORT)"],
+        ['trackerProxyListenOn (HOST:PORT)', 'P', 'localhost:8080', "Adress to bind the tracker proxy to (default localhost:8080)"],
         ['transmissionRpc','T',"http://transmission:transmission@localhost:9091","The RPC URL for transmission"],
         ['transmissionDownloadsDir','D',"/var/lib/transmission-daemon/downloads","The downloads directory for transmission"],
         ['removeLimit','r',0,"Remove torrent and data when this many other storage-nodes have the data (0=never remove)"],
@@ -94,9 +96,16 @@ class MyServiceMaker(object):
             dropboxWatcher = DropboxWatcher(lobber,transmission,options['dropbox'],register=options['register'],acl=options['acl'])
             self.dropbox = task.LoopingCall(dropboxWatcher.watch_dropbox)
             self.dropbox.start(5,True)
-        
-        proxy = server.Site(TrackerProxyResource('beta.lobber.se', 80, '', options['lobberKey']))
-        reactor.listenTCP(8080, proxy)     
+
+        tracker = options['trackerProxyTrackerUrl'].split(':')
+        tracker_host = tracker[0]
+        tracker_port = tracker[1]
+        proxy = server.Site(TrackerProxyResource(tracker_host, tracker_port, '',
+                                                 options['lobberKey']))
+        bindto = options['trackerProxyListenOn'].split(':')
+        bindto_host = bindto[0]
+        bindto_port = bindto[1]
+        reactor.listenTCP(bindto_port, proxy, interface=bindto_host)
         return stompService
     
 serviceMaker = MyServiceMaker()
