@@ -56,7 +56,7 @@ class Options(usage.Options):
                 self.destinations.append(x)
             else:
                 self.urls.append(x)
-        if options['standardNotifications']:
+        if self['standardNotifications']:
             self.destinations.append("/torrents/notify")
 
     def postOptions(self):
