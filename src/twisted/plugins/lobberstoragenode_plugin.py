@@ -33,8 +33,8 @@ class Options(usage.Options):
         ['trackerProxyListenOn (HOST:PORT)', 'P', 'localhost:8080',
          "Adress to bind the tracker proxy to (default localhost:8080)"],
         ['removeLimit', 'r', 0,
-         # -R in optFlags
          "Remove torrent and data when this many other storage-nodes have the data (default 0=never remove)"],
+         # -R in optFlags
         ['stompUrl', 'S', 'stomp://localhost:61613',
          "The STOMP protocol URL to use for notifications"],
         ['transmissionRpc', 'T', 'http://transmission:transmission@localhost:9091',
@@ -56,7 +56,7 @@ class Options(usage.Options):
                 self.destinations.append(x)
             else:
                 self.urls.append(x)
-        if optFlags['standardNotifications']:
+        if options['standardNotifications']:
             self.destinations.append("/torrents/notify")
 
     def postOptions(self):
