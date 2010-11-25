@@ -27,6 +27,7 @@ class Options(usage.Options):
          "The host running both STOMP and https for lobber"],
         ['lobberKey', 'k', None,
          "The Lobber application key to use"],
+        # -n in optFlags
         ['trackerProxyTrackerUrl', 'p', None,
          "Enable tracker proxying for given https tracker (HOST:PORT)"],
         ['trackerProxyListenOn (HOST:PORT)', 'P', 'localhost:8080',
@@ -41,7 +42,10 @@ class Options(usage.Options):
     ]
     
     optFlags = [
-        ['register', 'R', "Register new torrents with lobber"]
+        ['standardNotifications', 'n',
+         "Add standard notificiation destinations"],
+        ['register', 'R',
+         "Register new torrents with lobber"]
     ]
     
     def parseArgs(self,*args):
@@ -52,9 +56,8 @@ class Options(usage.Options):
                 self.destinations.append(x)
             else:
                 self.urls.append(x)
-        
-        # always include the standard notify destination
-        self.destinations.append("/torrents/notify")
+        if optFlags['standardNotifications']:
+            self.destinations.append("/torrents/notify")
 
     def postOptions(self):
         log.msg("postOptions")
