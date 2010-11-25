@@ -120,15 +120,17 @@ class MyServiceMaker(object):
             self.dropbox = task.LoopingCall(dropboxWatcher.watch_dropbox)
             self.dropbox.start(5,True)
 
-        tracker = options['trackerProxyTrackerUrl'].split(':')
-        tracker_host = tracker[0]
-        tracker_port = tracker[1]
-        proxy = server.Site(TrackerProxyResource(tracker_host, tracker_port, '',
-                                                 options['lobberKey']))
-        bindto = options['trackerProxyListenOn'].split(':')
-        bindto_host = bindto[0]
-        bindto_port = bindto[1]
-        reactor.listenTCP(bindto_port, proxy, interface=bindto_host)
+        if options['trackerProxyTrackerUrl']:
+            tracker = options['trackerProxyTrackerUrl'].split(':')
+            tracker_host = tracker[0]
+            tracker_port = tracker[1]
+            proxy = server.Site(TrackerProxyResource(tracker_host, tracker_port,
+                                                     '', options['lobberKey']))
+            bindto = options['trackerProxyListenOn'].split(':')
+            bindto_host = bindto[0]
+            bindto_port = bindto[1]
+            reactor.listenTCP(bindto_port, proxy, interface=bindto_host)
+
         return stompService
     
 serviceMaker = MyServiceMaker()
