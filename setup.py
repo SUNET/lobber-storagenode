@@ -50,12 +50,12 @@ if __name__ == '__main__':
 
     setup(
         name="lobberstoragenode",
-        version='0.4',
+        version='0.6',
         package_dir={'': 'src'},
         description="Lobber Storage Node",
         author=__author__,
         author_email="leifj@sunet.se",
-        url="http://lobber.se",
+        url="https://portal.nordu.net/display/LOBBER/Lobber"
         requires=['stompservice','feedparser','transmissionrpc'],
         packages=[
             "lobber",
