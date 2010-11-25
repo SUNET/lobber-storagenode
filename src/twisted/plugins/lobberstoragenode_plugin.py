@@ -29,7 +29,7 @@ class Options(usage.Options):
          "The Lobber application key to use"],
         # -n in optFlags
         ['trackerProxyTrackerUrl', 'p', None,
-         "Enable tracker proxying for given https tracker (HOST:PORT)"],
+         "Enable tracker proxying for given https tracker (HOST[:PORT])"],
         ['trackerProxyListenOn (HOST:PORT)', 'P', 'localhost:8080',
          "Adress to bind the tracker proxy to (default localhost:8080)"],
         ['removeLimit', 'r', 0,
@@ -123,7 +123,10 @@ class MyServiceMaker(object):
         if options['trackerProxyTrackerUrl']:
             tracker = options['trackerProxyTrackerUrl'].split(':')
             tracker_host = tracker[0]
-            tracker_port = tracker[1]
+            if len(tracker) > 1:
+                tracker_port = tracker[1]
+            else:
+                tracker_port = 443
             proxy = server.Site(TrackerProxyResource(tracker_host, tracker_port,
                                                      '', options['lobberKey']))
             bindto = options['trackerProxyListenOn'].split(':')
