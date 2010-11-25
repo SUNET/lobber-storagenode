@@ -55,7 +55,7 @@ if __name__ == '__main__':
         description="Lobber Storage Node",
         author=__author__,
         author_email="leifj@sunet.se",
-        url="https://portal.nordu.net/display/LOBBER/Lobber"
+        url="https://portal.nordu.net/display/LOBBER/Lobber",
         requires=['stompservice','feedparser','transmissionrpc'],
         packages=[
             "lobber",
