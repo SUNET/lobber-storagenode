@@ -131,7 +131,7 @@ class MyServiceMaker(object):
                                                      '', options['lobberKey']))
             bindto = options['trackerProxyListenOn'].split(':')
             bindto_host = bindto[0]
-            bindto_port = bindto[1]
+            bindto_port = int(bindto[1])
             reactor.listenTCP(bindto_port, proxy, interface=bindto_host)
 
         return stompService
