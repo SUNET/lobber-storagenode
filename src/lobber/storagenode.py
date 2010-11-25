@@ -434,10 +434,10 @@ class DropboxWatcher:
             raise
         
 class TrackerProxyResource(ReverseProxyResource):
-    def __init__(self, host, port, path, reactor=reactor,lobberkey=None):
+    def __init__(self, host, port, path, reactor=reactor, lobberkey=None):
         self.lobberkey = lobberkey
-        return ReverseProxyResource.__init__(self,host,port,path,reactor)
+        ReverseProxyResource.__init__(self, host, port, path, reactor)
         
     def render(self,request):
-        request.setHeader("X_LOBBER_KEY",self.lobberkey)
-        return ReverseProxyResource.render(self,request)
+        request.setHeader("X_LOBBER_KEY", self.lobberkey)
+        return ReverseProxyResource.render(self, request)
