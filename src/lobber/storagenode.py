@@ -114,7 +114,11 @@ class MultiPartForm(object):
 
 class LobberClient:
     
-    def __init__(self,lobber_url="http://localhost:8000",lobber_key=None,torrent_dir="/tmp/lobber-torrents",announce_url=None):
+    def __init__(self,
+                 lobber_url="http://localhost:8000",
+                 lobber_key=None,
+                 torrent_dir="/tmp/lobber-torrents",
+                 announce_url=None):
         self.lobber_url = lobber_url
         self.lobber_key = lobber_key
         self.torrent_dir = torrent_dir
