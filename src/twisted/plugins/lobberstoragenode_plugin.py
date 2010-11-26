@@ -15,6 +15,8 @@ from twisted.web import server
 class Options(usage.Options):
 
     optParameters = [
+        ['announceUrl', 'a', None,
+         "Announce URL (tracker) to use for new torrents"],
         ['acl', 'A', None,
          "Access Control List to apply to new torrents"],
         ['dropbox', 'b', None,
@@ -92,7 +94,8 @@ class MyServiceMaker(object):
         """
         lobber = LobberClient(options['lobberUrl'],
                               options['lobberKey'],
-                              options['torrentDir'].rstrip(os.sep))
+                              options['torrentDir'].rstrip(os.sep),
+                              options['announceUrl'])
         transmission = TransmissionClient(options['transmissionRpc'],
                                           options['transmissionDownloadsDir'])
 
