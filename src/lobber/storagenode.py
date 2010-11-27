@@ -266,7 +266,7 @@ class TransmissionSweeper:
     def clean_done(self):
         tc = self.transmission.client()
         for t in tc.list().values():
-            log.msg("clean_done [%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
+            #log.msg("clean_done [%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
             tc.reannounce(t.id)
             tc.change(t.id,seedRatioMode=2,uploadLimited=False,downloadLimited=False)
             if t.status == 'seeding':
@@ -398,16 +398,16 @@ class TorrentDownloader(StompClientFactory):
                 log.msg("Got an unknown message")
                 return
             
-            log.msg(pformat(notice))
+            log.msg("stomp msg: " % pformat(notice))
             for type,info in notice.iteritems():
                 id = info[0]
                 hashval = info[1]
                 if type == 'add':
-                    log.msg("add %d %s" % (id,hashval))
+                    #log.msg("add %d %s" % (id,hashval))
                     self.url_handler.load_url_retry(self.lobber.torrent_url(id))
                 
                 if type == 'delete':
-                    log.msg("delete %d %s" % (id,hashval))
+                    #log.msg("delete %d %s" % (id,hashval))
                     self.lobber.api_call("/torrent/exists/%s" % hashval,err_handler=lambda err: self.remove_on_404_other(err,id,hashval))
         except Exception,err:
             log.msg(err)
@@ -477,4 +477,5 @@ class TrackerProxyResource(ReverseProxyResource):
         
     def render(self,request):
         request.setHeader("X_LOBBER_KEY", self.lobberkey)
+        log.msg("proxy: %s" % repr(request))
         return ReverseProxyResource.render(self, request)
