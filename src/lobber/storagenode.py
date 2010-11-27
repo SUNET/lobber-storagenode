@@ -302,7 +302,7 @@ class TransmissionURLHandler:
             log.msg("Got torrent with info_hash "+info_hash)
             fn = self.torrent_file(info_hash)
             if not os.path.exists(fn):
-                if tracker_url and proxy_url:
+                if self.tracker_url and self.proxy_url:
                     d = deluge.bencode.bdecode(data)
                     annl = d.get('announce-list') # List of list of strings.
                     if annl:
@@ -314,7 +314,7 @@ class TransmissionURLHandler:
                     else:
                         ann = d.get('announce') # String
                         if ann and ann == self.tracker_url:
-                            ann = self.proxy_url
+                            d['announce'] = self.proxy_url
                         data = deluge.bencode.bencode(d)
                 f = open(fn,"w")
                 f.write(data)
