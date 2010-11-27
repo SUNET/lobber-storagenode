@@ -21,6 +21,8 @@ if [ -f /etc/defaults/lobber ]; then
 fi
 
 L_OPTS="$L_LOG --pidfile $L_PIDDIR/$L_PIDFILE lobberstoragenode"
+L_OPTS="$L_OPTS --standardNotifications"
+L_OPTS="$L_OPTS --trackerProxyTrackerUrl=https://beta-tracker.lobber.se:443/tracker/announce --trackerProxyListenOn=127.0.0.1:8080"
 
 if [ "x$L_KEY" != "x" ]; then
    L_OPTS="${L_OPTS} -k $L_KEY"
@@ -34,11 +36,9 @@ if [ "x$L_TORRENTS" != "x" ]; then
    L_OPTS="${L_OPTS} -d $L_TORRENTS"
 fi
 
-case "$1" in
-  start)
-
-     transmission-remote -n transmission:transmission -GSR #seed forever
-     transmission-remote -n transmission:transmission -t all -s #start all (just in case)
+start() {
+     transmission-remote -n transmission:transmission -GSR #seed forever        
+     transmission-remote -n transmission:transmission -t all -s #start all (just in case)                                                                      
 
      [ -d $L_TORRENTS ] || mkdir -p $L_TORRENTS
      chown $L_USER:$L_GROUP_PERM $L_TORRENTS
@@ -48,13 +48,17 @@ case "$1" in
      chown $L_USER:$L_GROUP_PERM $L_PIDDIR
      chmod 770 $L_PIDDIR
 
-     cd $L_PIDDIR
      sudo -u $L_USER twistd $L_OPTS $L_URLS
-     ;;
-   stop)
-	kill `cat $L_PIDDIR/$L_PIDFILE`
-        ;;
-   *)
+}
+stop() {
+        kill `cat $L_PIDDIR/$L_PIDFILE`
+}
+
+case "$1" in
+    start) start ;;
+    stop) stop ;;
+    restart) stop; start ;;
+    *)
         echo "Usage: /etc/init.d/lobber {start|stop}"
         exit 1
         ;;
