@@ -127,12 +127,9 @@ class MyServiceMaker(object):
             self.dropbox.start(5,True)
 
         if options['trackerProxyTrackerUrl']:
-            tracker = options['trackerProxyTrackerUrl'].split(':')
-            tracker_host = tracker[0]
-            if len(tracker) > 1:
-                tracker_port = tracker[1]
-            else:
-                tracker_port = 443
+            from urllib import splittype, splithost, splitnport
+            x = splithost(splittype(options['trackerProxyTrackerUrl'])[1])[0]
+            tracker_host, tracker_port = splitnport(x, 443)
             proxy = server.Site(TrackerProxyResource(tracker_host, tracker_port,
                                                      '', options['lobberKey']))
             bindto = options['trackerProxyListenOn'].split(':')
