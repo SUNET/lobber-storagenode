@@ -325,7 +325,7 @@ class TransmissionURLHandler:
                     else:
                         ann = d.get('announce') # String
                         if ann and ann == self.tracker_url:
-                            d['announce'] = self.proxy_url
+                            d['announce'] = proxy_url
                         data = deluge.bencode.bencode(d)
                 f = open(fn,"w")
                 f.write(data)
