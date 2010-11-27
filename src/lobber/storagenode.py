@@ -285,13 +285,22 @@ class TransmissionSweeper:
             self.lobber.api_call("/torrent/exists/%s" % t.hashString, lambda err: self.remove_on_404(err,t))
                 
                 
+def _rewrite_url(url, new_addr, new_proto=None):
+    from urllib import splittype, splithost
+    proto, rest = splittype(url)
+    addr = splithost(rest)[0]
+    url = url.replace(addr, new_addr, 1)
+    if new_proto:
+        url = url.replace(proto, new_proto, 1)
+    return url
+
 class TransmissionURLHandler:
     
-    def __init__(self,lobber,transmission, tracker_url, proxy_url):
+    def __init__(self,lobber,transmission, tracker_url, proxy_addr):
         self.transmission = transmission
         self.lobber = lobber
         self.tracker_url = tracker_url
-        self.proxy_url = proxy_url
+        self.proxy_addr = proxy_addr
     
     def torrent_file(self,info_hash):
         return self.lobber.torrent_dir+os.sep+info_hash+".torrent"
@@ -302,14 +311,16 @@ class TransmissionURLHandler:
             log.msg("Got torrent with info_hash "+info_hash)
             fn = self.torrent_file(info_hash)
             if not os.path.exists(fn):
-                if self.tracker_url and self.proxy_url:
+                if self.tracker_url and self.proxy_addr:
                     d = deluge.bencode.bdecode(data)
+                    proxy_url = _rewrite_url(self.tracker_url, self.proxy_addr,
+                                             'http')
                     annl = d.get('announce-list') # List of list of strings.
                     if annl:
                         for l in annl:
                             while self.tracker_url in l:
                                 l.remove(self.tracker_url)
-                                l.insert(self.proxy_url)
+                                l.insert(proxy_url)
                         data = deluge.bencode.bencode(d)
                     else:
                         ann = d.get('announce') # String
@@ -357,10 +368,10 @@ class TransmissionURLHandler:
 class TorrentDownloader(StompClientFactory):
 
     def __init__(self,lobber,transmission,destinations=["/torrent/notify"],
-                 tracker_url=None, proxy_url=None):
+                 tracker_url=None, proxy_addr=None):
         self.destinations = destinations
         self.url_handler = TransmissionURLHandler(lobber, transmission,
-                                                  tracker_url, proxy_url)
+                                                  tracker_url, proxy_addr)
         self.lobber = lobber
         self.transmission = transmission
 
