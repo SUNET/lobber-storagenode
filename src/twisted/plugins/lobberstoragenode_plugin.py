@@ -33,9 +33,9 @@ class Options(usage.Options):
         ['trackerProxyTrackerUrl', 'p', None,
          "Enable tracker proxying for given https tracker (HOST[:PORT])"],
         ['trackerProxyListenOn', 'P', 'localhost:8080',
-         "Adress to bind the tracker proxy to [default localhost:8080]"],
+         "Adress to bind the tracker proxy to"],
         ['removeLimit', 'r', 0,
-         "Remove torrent and data when this many other storage-nodes have the data (default 0=never remove)"],
+         "Remove torrent and data when this many other storage-nodes have the data (0=never remove)"],
          # -R in optFlags
         ['stompUrl', 'S', 'stomp://localhost:61613',
          "The STOMP protocol URL to use for notifications"],
