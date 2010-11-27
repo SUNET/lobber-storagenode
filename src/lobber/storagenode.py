@@ -8,7 +8,7 @@ from hashlib import sha1
 import transmissionrpc
 from urlparse import urlparse
 from tempfile import NamedTemporaryFile
-from deluge.metafile import make_meta_file
+import deluge.metafile, deluge.bencode
 import shutil
 import errno
 from pprint import pformat
@@ -136,7 +136,11 @@ class LobberClient:
             comment = "%s" % name
         
         log.msg("Writing torrent file to %s" % tmptf.name)
-        make_meta_file(datapath,self.announce_url, 2**18, comment=comment, target=tmptf.name)
+        deluge.metafile.make_meta_file(datapath,
+                                       self.announce_url,
+                                       2**18,
+                                       comment=comment,
+                                       target=tmptf.name)
         torrent_file = tmptf.name
         log.msg("Made torrent file %s" % tmptf.name)
         
@@ -283,9 +287,11 @@ class TransmissionSweeper:
                 
 class TransmissionURLHandler:
     
-    def __init__(self,lobber,transmission):
+    def __init__(self,lobber,transmission, tracker_url, proxy_url):
         self.transmission = transmission
         self.lobber = lobber
+        self.tracker_url = tracker_url
+        self.proxy_url = proxy_url
     
     def torrent_file(self,info_hash):
         return self.lobber.torrent_dir+os.sep+info_hash+".torrent"
@@ -296,6 +302,20 @@ class TransmissionURLHandler:
             log.msg("Got torrent with info_hash "+info_hash)
             fn = self.torrent_file(info_hash)
             if not os.path.exists(fn):
+                if tracker_url and proxy_url:
+                    d = deluge.bencode.bdecode(data)
+                    annl = d.get('announce-list') # List of list of strings.
+                    if annl:
+                        for l in annl:
+                            while self.tracker_url in l:
+                                l.remove(self.tracker_url)
+                                l.insert(self.proxy_url)
+                        data = deluge.bencode.bencode(d)
+                    else:
+                        ann = d.get('announce') # String
+                        if ann and ann == self.tracker_url:
+                            ann = self.proxy_url
+                        data = deluge.bencode.bencode(d)
                 f = open(fn,"w")
                 f.write(data)
                 f.close()
@@ -336,9 +356,11 @@ class TransmissionURLHandler:
 
 class TorrentDownloader(StompClientFactory):
 
-    def __init__(self,lobber,transmission,destinations=["/torrent/notify"]):
+    def __init__(self,lobber,transmission,destinations=["/torrent/notify"],
+                 tracker_url=None, proxy_url=None):
         self.destinations = destinations
-        self.url_handler = TransmissionURLHandler(lobber, transmission)
+        self.url_handler = TransmissionURLHandler(lobber, transmission,
+                                                  tracker_url, proxy_url)
         self.lobber = lobber
         self.transmission = transmission
 

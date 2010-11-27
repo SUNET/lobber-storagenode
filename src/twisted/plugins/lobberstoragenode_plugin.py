@@ -99,7 +99,10 @@ class MyServiceMaker(object):
         transmission = TransmissionClient(options['transmissionRpc'],
                                           options['transmissionDownloadsDir'])
 
-        torrentDownloader = TorrentDownloader(lobber,transmission,options.destinations)
+        torrentDownloader = TorrentDownloader(lobber,transmission,
+                                              options.destinations,
+                                              options['trackerProxyTrackerUrl'],
+                                              options['trackerProxyListenOn'])
         stompService = internet.TCPClient(options['stomp_host'],
                                           options['stomp_port'],
                                           torrentDownloader)
