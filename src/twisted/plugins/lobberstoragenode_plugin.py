@@ -116,7 +116,7 @@ class MyServiceMaker(object):
         transmissionSweeper = TransmissionSweeper(lobber, transmission,
                                                   remove_limit=options['removeLimit'])
         self.sweeper = task.LoopingCall(transmissionSweeper.clean_done)
-        self.sweeper.start(30,True)
+        reactor.callLater(30/2, self.sweeper.start, 30, True)
 
         if options['dropbox']:
             dropboxWatcher = DropboxWatcher(lobber,transmission,
