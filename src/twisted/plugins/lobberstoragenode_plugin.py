@@ -131,8 +131,10 @@ class MyServiceMaker(object):
             from urllib import splittype, splithost, splitnport
             x = splithost(splittype(options['trackerProxyTrackerUrl'])[1])[0]
             tracker_host, tracker_port = splitnport(x, 443)
-            proxy = server.Site(ReverseProxyTLSResource(u.hostname, u.port, '',tls=True, 
-				headers={'X_LOBBER_KEY': options['lobberKey']}))
+            proxy = server.Site(
+                ReverseProxyTLSResource(
+                    tracker_host, tracker_port, '', tls=True,
+                    headers={'X_LOBBER_KEY': options['lobberKey']}))
             bindto = options['trackerProxyListenOn'].split(':')
             bindto_host = bindto[0]
             bindto_port = int(bindto[1])
