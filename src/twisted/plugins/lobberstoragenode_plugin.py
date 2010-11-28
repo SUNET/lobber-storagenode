@@ -1,8 +1,7 @@
 from twisted.application import service
 from twisted.python import log
 from twisted.application import internet
-
-from lobber.storagenode import TorrentDownloader, LobberClient, TransmissionClient, TransmissionSweeper, DropboxWatcher, TrackerProxyResource
+from lobber.storagenode import TorrentDownloader, LobberClient, TransmissionClient, TransmissionSweeper, DropboxWatcher
 from twisted.python import usage
 import os
 from urlparse import urlparse
@@ -11,6 +10,8 @@ from zope.interface.declarations import implements
 from twisted.plugin import IPlugin
 import sys
 from twisted.web import server
+from pprint import pprint
+from lobber.proxy import ReverseProxyTLSResource
 
 class Options(usage.Options):
 
@@ -130,8 +131,8 @@ class MyServiceMaker(object):
             from urllib import splittype, splithost, splitnport
             x = splithost(splittype(options['trackerProxyTrackerUrl'])[1])[0]
             tracker_host, tracker_port = splitnport(x, 443)
-            proxy = server.Site(TrackerProxyResource(tracker_host, tracker_port,
-                                                     '', options['lobberKey']))
+            proxy = server.Site(ReverseProxyTLSResource(u.hostname, u.port, '',tls=tls, 
+				headers={'X_LOBBER_KEY': options['lobberKey']}))
             bindto = options['trackerProxyListenOn'].split(':')
             bindto_host = bindto[0]
             bindto_port = int(bindto[1])
