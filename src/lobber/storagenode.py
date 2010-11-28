@@ -8,7 +8,7 @@ from hashlib import sha1
 import transmissionrpc
 from urlparse import urlparse
 from tempfile import NamedTemporaryFile
-from deluge.metafile import make_meta_file
+import deluge.metafile, deluge.bencode
 import shutil
 import errno
 from pprint import pformat, pprint
@@ -114,7 +114,11 @@ class MultiPartForm(object):
 
 class LobberClient:
     
-    def __init__(self,lobber_url="http://localhost:8000",lobber_key=None,torrent_dir="/tmp/lobber-torrents",announce_url=None):
+    def __init__(self,
+                 lobber_url="http://localhost:8000",
+                 lobber_key=None,
+                 torrent_dir="/tmp/lobber-torrents",
+                 announce_url=None):
         self.lobber_url = lobber_url
         self.lobber_key = lobber_key
         self.torrent_dir = torrent_dir
@@ -132,7 +136,11 @@ class LobberClient:
             comment = "%s" % name
         
         log.msg("Writing torrent file to %s" % tmptf.name)
-        make_meta_file(datapath,self.announce_url, 2**18, comment=comment, target=tmptf.name)
+        deluge.metafile.make_meta_file(datapath,
+                                       self.announce_url,
+                                       2**18,
+                                       comment=comment,
+                                       target=tmptf.name)
         torrent_file = tmptf.name
         log.msg("Made torrent file %s" % tmptf.name)
         
@@ -258,7 +266,7 @@ class TransmissionSweeper:
     def clean_done(self):
         tc = self.transmission.client()
         for t in tc.list().values():
-            log.msg("clean_done [%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
+            #log.msg("clean_done [%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
             tc.reannounce(t.id)
             tc.change(t.id,seedRatioMode=2,uploadLimited=False,downloadLimited=False)
             if t.status == 'seeding':
@@ -277,11 +285,22 @@ class TransmissionSweeper:
             self.lobber.api_call("/torrent/exists/%s" % t.hashString, lambda err: self.remove_on_404(err,t))
                 
                 
+def _rewrite_url(url, new_addr, new_proto=None):
+    from urllib import splittype, splithost
+    proto, rest = splittype(url)
+    addr = splithost(rest)[0]
+    url = url.replace(addr, new_addr, 1)
+    if new_proto:
+        url = url.replace(proto, new_proto, 1)
+    return url
+
 class TransmissionURLHandler:
     
-    def __init__(self,lobber,transmission):
+    def __init__(self,lobber,transmission, tracker_url, proxy_addr):
         self.transmission = transmission
         self.lobber = lobber
+        self.tracker_url = tracker_url
+        self.proxy_addr = proxy_addr
     
     def torrent_file(self,info_hash):
         return self.lobber.torrent_dir+os.sep+info_hash+".torrent"
@@ -292,6 +311,22 @@ class TransmissionURLHandler:
             log.msg("Got torrent with info_hash "+info_hash)
             fn = self.torrent_file(info_hash)
             if not os.path.exists(fn):
+                if self.tracker_url and self.proxy_addr:
+                    d = deluge.bencode.bdecode(data)
+                    proxy_url = _rewrite_url(self.tracker_url, self.proxy_addr,
+                                             'http')
+                    annl = d.get('announce-list') # List of list of strings.
+                    if annl:
+                        for l in annl:
+                            while self.tracker_url in l:
+                                l.remove(self.tracker_url)
+                                l.insert(proxy_url)
+                        data = deluge.bencode.bencode(d)
+                    else:
+                        ann = d.get('announce') # String
+                        if ann and ann == self.tracker_url:
+                            d['announce'] = proxy_url
+                        data = deluge.bencode.bencode(d)
                 f = open(fn,"w")
                 f.write(data)
                 f.close()
@@ -332,9 +367,11 @@ class TransmissionURLHandler:
 
 class TorrentDownloader(StompClientFactory):
 
-    def __init__(self,lobber,transmission,destinations=["/torrent/notify"]):
+    def __init__(self,lobber,transmission,destinations=["/torrent/notify"],
+                 tracker_url=None, proxy_addr=None):
         self.destinations = destinations
-        self.url_handler = TransmissionURLHandler(lobber, transmission)
+        self.url_handler = TransmissionURLHandler(lobber, transmission,
+                                                  tracker_url, proxy_addr)
         self.lobber = lobber
         self.transmission = transmission
 
@@ -361,16 +398,16 @@ class TorrentDownloader(StompClientFactory):
                 log.msg("Got an unknown message")
                 return
             
-            log.msg(pformat(notice))
+            log.msg("stomp msg: " % pformat(notice))
             for type,info in notice.iteritems():
                 id = info[0]
                 hashval = info[1]
                 if type == 'add':
-                    log.msg("add %d %s" % (id,hashval))
+                    #log.msg("add %d %s" % (id,hashval))
                     self.url_handler.load_url_retry(self.lobber.torrent_url(id))
                 
                 if type == 'delete':
-                    log.msg("delete %d %s" % (id,hashval))
+                    #log.msg("delete %d %s" % (id,hashval))
                     self.lobber.api_call("/torrent/exists/%s" % hashval,err_handler=lambda err: self.remove_on_404_other(err,id,hashval))
         except Exception,err:
             log.msg(err)

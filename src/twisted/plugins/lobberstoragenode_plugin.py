@@ -1,7 +1,6 @@
 from twisted.application import service
 from twisted.python import log
 from twisted.application import internet
-
 from lobber.storagenode import TorrentDownloader, LobberClient, TransmissionClient, TransmissionSweeper, DropboxWatcher
 from twisted.python import usage
 import os
@@ -17,20 +16,39 @@ from lobber.proxy import ReverseProxyTLSResource
 class Options(usage.Options):
 
     optParameters = [
-        ["stompUrl", "S", "stomp://localhost:61613","The STOMP protocol URL to use for notifications"],
-        ["lobberKey", "k", None, "The Lobber application key to use"],
-        ["torrentDir", "d", "torrents", "The directory where to store torrents"],
-        ["lobberUrl", "u", "http://localhost:8000", "The Lobber URL prefix"],
-        ['lobberHost',"h", None, "The host running both STOMP and https for lobber"],
-        ['transmissionRpc','T',"http://transmission:transmission@localhost:9091","The RPC URL for transmission"],
-        ['transmissionDownloadsDir','D',"/var/lib/transmission-daemon/downloads","The downloads directory for transmission"],
-        ['removeLimit','r',0,"Remove torrent and data when this many other storage-nodes have the data (0=never remove)"],
-        ['dropbox','D',None,"A directory to watch for new content"],
-        ['acl','A',None,"Access Control List to apply to new torrents"]
+        ['announceUrl', 'a', None,
+         "Announce URL (tracker) to use for new torrents"],
+        ['acl', 'A', None,
+         "Access Control List to apply to new torrents"],
+        ['dropbox', 'b', None,
+         "A directory to watch for new content"],
+        ['torrentDir', 'd', 'torrents',
+         "The directory where to store torrents"],
+        ['transmissionDownloadsDir', 'D', '/var/lib/transmission-daemon/downloads',
+         "The downloads directory for transmission"],
+        ['lobberHost', 'h', None,
+         "The host running both STOMP and https for lobber"],
+        ['lobberKey', 'k', None,
+         "The Lobber application key to use"],
+        # -n in optFlags
+        ['trackerProxyTrackerUrl', 'p', None,
+         "Enable tracker proxying for given https tracker (HOST[:PORT])"],
+        ['trackerProxyListenOn', 'P', 'localhost:8080',
+         "Adress to bind the tracker proxy to"],
+        ['removeLimit', 'r', 0,
+         "Remove torrent and data when this many other storage-nodes have the data (0=never remove)"],
+         # -R in optFlags
+        ['stompUrl', 'S', 'stomp://localhost:61613',
+         "The STOMP protocol URL to use for notifications"],
+        ['transmissionRpc', 'T', 'http://transmission:transmission@localhost:9091',
+         "The RPC URL for transmission"]
     ]
     
     optFlags = [
-        ['register','R',"Register new torrents with lobber"]
+        ['standardNotifications', 'n',
+         "Add standard notificiation destinations"],
+        ['register', 'R',
+         "Register new torrents with lobber"]
     ]
     
     def parseArgs(self,*args):
@@ -41,9 +59,8 @@ class Options(usage.Options):
                 self.destinations.append(x)
             else:
                 self.urls.append(x)
-        
-        # always include the standard notify destination
-        self.destinations.append("/torrents/notify")
+        if self['standardNotifications']:
+            self.destinations.append("/torrents/notify")
 
     def postOptions(self):
         log.msg("postOptions")
@@ -60,7 +77,8 @@ class Options(usage.Options):
         self['stomp_port'] = int(port)
         
         if self['dropbox'] and not os.path.isdir(self['dropbox']):
-            raise usage.UsageError, "Dropbox does not exist or is not a directory: %s" % self['dropbox']
+            raise usage.UsageError, \
+                  "Dropbox does not exist or is not a directory: %s" % self['dropbox']
 
 class MyServiceMaker(object):
     implements(service.IServiceMaker, IPlugin)
@@ -75,11 +93,20 @@ class MyServiceMaker(object):
         """
         Constructs a lobber storage node service
         """
-        lobber = LobberClient(options['lobberUrl'], options['lobberKey'], options['torrentDir'].rstrip(os.sep))
-        transmission = TransmissionClient(options['transmissionRpc'], options['transmissionDownloadsDir'])
+        lobber = LobberClient(options['lobberUrl'],
+                              options['lobberKey'],
+                              options['torrentDir'].rstrip(os.sep),
+                              options['announceUrl'])
+        transmission = TransmissionClient(options['transmissionRpc'],
+                                          options['transmissionDownloadsDir'])
 
-        torrentDownloader = TorrentDownloader(lobber,transmission,options.destinations)
-        stompService = internet.TCPClient(options['stomp_host'],options['stomp_port'],torrentDownloader)
+        torrentDownloader = TorrentDownloader(lobber,transmission,
+                                              options.destinations,
+                                              options['trackerProxyTrackerUrl'],
+                                              options['trackerProxyListenOn'])
+        stompService = internet.TCPClient(options['stomp_host'],
+                                          options['stomp_port'],
+                                          torrentDownloader)
         
         self.getter = {}
         for url in options.urls:
@@ -87,20 +114,30 @@ class MyServiceMaker(object):
             self.getter[url] = task.LoopingCall(torrentDownloader.url_handler.load_url,url)
             self.getter[url].start(30,True)
         
-        transmissionSweeper = TransmissionSweeper(lobber, transmission, remove_limit=options['removeLimit'])
+        transmissionSweeper = TransmissionSweeper(lobber, transmission,
+                                                  remove_limit=options['removeLimit'])
         self.sweeper = task.LoopingCall(transmissionSweeper.clean_done)
-        self.sweeper.start(30,True)
+        reactor.callLater(30/2, self.sweeper.start, 30, True)
 
         if options['dropbox']:
-            dropboxWatcher = DropboxWatcher(lobber,transmission,options['dropbox'],register=options['register'],acl=options['acl'])
+            dropboxWatcher = DropboxWatcher(lobber,transmission,
+                                            options['dropbox'],
+                                            register=options['register'],
+                                            acl=options['acl'])
             self.dropbox = task.LoopingCall(dropboxWatcher.watch_dropbox)
             self.dropbox.start(5,True)
-        
-        u = urlparse(options['lobberUrl'])
-        pprint(u)
-        tls = (u.scheme == 'https')
-        proxy = server.Site(ReverseProxyTLSResource(u.hostname, u.port, '',tls=tls, headers={'X_LOBBER_KEY': options['lobberKey']}))
-        reactor.listenTCP(8080, proxy,interface='127.0.0.1')
+
+        if options['trackerProxyTrackerUrl']:
+            from urllib import splittype, splithost, splitnport
+            x = splithost(splittype(options['trackerProxyTrackerUrl'])[1])[0]
+            tracker_host, tracker_port = splitnport(x, 443)
+            proxy = server.Site(ReverseProxyTLSResource(u.hostname, u.port, '',tls=tls, 
+				headers={'X_LOBBER_KEY': options['lobberKey']}))
+            bindto = options['trackerProxyListenOn'].split(':')
+            bindto_host = bindto[0]
+            bindto_port = int(bindto[1])
+            reactor.listenTCP(bindto_port, proxy, interface=bindto_host)
+
         return stompService
     
 serviceMaker = MyServiceMaker()
