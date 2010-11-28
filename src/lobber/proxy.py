@@ -7,7 +7,7 @@ Created on Nov 3, 2010
 import urlparse
 from urllib import quote as urlquote
 
-from twisted.internet import reactor
+from twisted.internet import reactor, ssl
 from twisted.web.resource import Resource
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.proxy import ProxyClientFactory
@@ -103,7 +103,9 @@ class ReverseProxyTLSResource(Resource):
             request.getAllHeaders(), request.content.read(), request)
         
         if self.tls:
-            self.reactor.connectSSL(self.host, self.port, clientFactory)
+            context = ssl.ClientContextFactory()
+            context.method = ssl.SSL.TLSv1_METHOD
+            self.reactor.connectSSL(self.host, self.port, clientFactory, contex
         else:
             self.reactor.connectTCP(self.host, self.port, clientFactory)
         return NOT_DONE_YET
