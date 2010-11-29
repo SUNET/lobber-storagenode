@@ -251,7 +251,7 @@ class TransmissionSweeper:
                     tc.remove(id,delete_data=True)
                     shutil.rmtree(self.transmission.unique_path(hashString), True)
             except Exception,err:
-                log.msg(err)
+                log.err(err)
     
     def remove_on_404(self,err,t):
         log.msg("TransmissionSweeper.remove_on_404: err=%s, t=%s" % (pformat(err.value), repr(t)))
@@ -342,7 +342,7 @@ class TransmissionURLHandler:
                 for e in f.entries:
                     self.load_url(e.link, True)
             except Exception,e:
-                log.msg(e)
+                log.err(e)
         else:
             try:
                 torrents = json.loads(data)
@@ -356,7 +356,7 @@ class TransmissionURLHandler:
             except ValueError:
                 pass
             except Exception,e:
-                log.msg(e)
+                log.err(e)
             
         return
     
@@ -419,7 +419,7 @@ class TorrentDownloader(StompClientFactory):
                     #log.msg("delete %d %s" % (id,hashval))
                     self.lobber.api_call("/torrent/exists/%s" % hashval,err_handler=lambda err: self.remove_on_404_other(err,id,hashval))
         except Exception,err:
-            log.msg(err)
+            log.err(err)
               
               
 class DropboxWatcher:
@@ -433,7 +433,8 @@ class DropboxWatcher:
         self.publicAccess = publicAccess
     
     def kill_torrent(self,err,torrent_file_name):
-        log.msg("an error occured - %s - cancelling torrent upload" % pformat(err))
+        log.err("an error occured - %s - cancelling torrent upload" \
+                % pformat(err))
         os.unlink(torrent_file_name)
         
     def start_torrent(self,data,torrent_file,data_file):
@@ -476,5 +477,5 @@ class DropboxWatcher:
                     else:
                         self.start_torrent("",tfn,dfn)
         except Exception, err:
-            log.msg(err)
+            log.err(err)
             raise
