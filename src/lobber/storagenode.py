@@ -265,6 +265,13 @@ class TransmissionSweeper:
             shutil.rmtree(self.transmission.unique_path(t.hashString), True)
     
     def clean_done(self):
+        class errwrapper(object):
+            def __init__(self, sweeper, transmission_torrent):
+                self._sweeper = sweeper
+                self._t = transmission_torrent
+            def err(self, err):
+                self._sweeper.remove_on_404(err, self._t)
+
         tc = self.transmission.client()
         for t in tc.list().values():
             #log.msg("clean_done [%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
@@ -277,14 +284,10 @@ class TransmissionSweeper:
                                          page_handler=lambda page: self.remove_if_done(page,t.id,t.hashString), 
                                          err_handler=logit)
                 
-            self.lobber.api_call("/torrent/exists/%s" % t.hashString, err_handler=lambda err: self.remove_on_404(err,t))
-            
-    def clean_unauthorized(self):
-        tc = self.transmission.client()
-        for t in tc.list().values():
-            log.msg("clean_unauthorized [%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
-            self.lobber.api_call("/torrent/exists/%s" % t.hashString, lambda err: self.remove_on_404(err,t))
-                
+            d = self.lobber.api_call("/torrent/exists/%s" % t.hashString,
+                                     err_handler=errwrapper(self, t).err)
+
+        
                 
 def _rewrite_url(url, new_addr, new_proto=None):
     from urllib import splittype, splithost
