@@ -340,7 +340,7 @@ class TransmissionURLHandler:
             try:
                 f = feedparser.parse(data)
                 for e in f.entries:
-                    self.load_url_retry(e.link)
+                    self.load_url(e.link, True)
             except Exception,e:
                 log.msg(e)
         else:
@@ -350,7 +350,9 @@ class TransmissionURLHandler:
                     fn = self.torrent_file(t['info_hash'])
                     if not os.path.exists(fn):
                         log.msg("adding %s from %s" % (t['label'],fn))
-                        self.load_url_retry("%s%s.torrent" % (self.lobber.lobber_url,t['link']))
+                        url = "%s%s.torrent" % (self.lobber.lobber_url,
+                                                t['link'])
+                        self.load_url(url, True)
             except ValueError:
                 pass
             except Exception,e:
@@ -358,16 +360,19 @@ class TransmissionURLHandler:
             
         return
     
-    def load_url(self,url):
-        d = client.getPage(url.encode('ascii'),agent="Lobber Storage Node/1.0",headers={'X_LOBBER_KEY': self.lobber.lobber_key})
-        d.addCallback(self.handle_page)
-        return
-    
-    def load_url_retry(self,url):
-        r = RetryingCall(client.getPage,url.encode('ascii'),agent="Lobber Storage Node/1.0",headers={'X_LOBBER_KEY': self.lobber.lobber_key})
-        d = r.start(failureTester=TwitterFailureTester())
-        d.addCallback(self.handle_page)
-        return
+   def load_url(self, url, retry=False):
+       agent = 'Lobber Storage Node/1.0'
+       headers = {'X_LOBBER_KEY': self.lobber.lobber_key}
+       if retry:
+           r = RetryingCall(client.getPage, url.encode('ascii'), agent=agent,
+                            headers=headers)
+           d = r.start(failureTester=TwitterFailureTester())
+       else:
+           d = client.getPage(url.encode('ascii'), agent=agent,
+                              headers=headers)
+         d.addCallback(self.handle_page)
+         return
+
 
 class TorrentDownloader(StompClientFactory):
 
@@ -408,7 +413,7 @@ class TorrentDownloader(StompClientFactory):
                 hashval = info[1]
                 if type == 'add':
                     #log.msg("add %d %s" % (id,hashval))
-                    self.url_handler.load_url_retry(self.lobber.torrent_url(id))
+                    self.url_handler.load_url(self.lobber.torrent_url(id))
                 
                 if type == 'delete':
                     #log.msg("delete %d %s" % (id,hashval))
