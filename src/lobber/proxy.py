@@ -105,7 +105,8 @@ class ReverseProxyTLSResource(Resource):
         if self.tls:
             context = ssl.ClientContextFactory()
             context.method = ssl.SSL.TLSv1_METHOD
-            self.reactor.connectSSL(self.host, self.port, clientFactory, contex
+            self.reactor.connectSSL(self.host, self.port, clientFactory,
+                                    context)
         else:
             self.reactor.connectTCP(self.host, self.port, clientFactory)
         return NOT_DONE_YET
