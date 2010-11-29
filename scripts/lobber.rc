@@ -50,8 +50,11 @@ start() {
 
      sudo -u $L_USER twistd $L_OPTS $L_URLS
 }
+
 stop() {
-        kill `cat $L_PIDDIR/$L_PIDFILE`
+    if test -f $L_PIDDIR/$L_PIDFILE; then
+	kill `cat $L_PIDDIR/$L_PIDFILE`
+    fi
 }
 
 case "$1" in
