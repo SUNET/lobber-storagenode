@@ -360,18 +360,18 @@ class TransmissionURLHandler:
             
         return
     
-   def load_url(self, url, retry=False):
-       agent = 'Lobber Storage Node/1.0'
-       headers = {'X_LOBBER_KEY': self.lobber.lobber_key}
-       if retry:
-           r = RetryingCall(client.getPage, url.encode('ascii'), agent=agent,
-                            headers=headers)
-           d = r.start(failureTester=TwitterFailureTester())
-       else:
-           d = client.getPage(url.encode('ascii'), agent=agent,
-                              headers=headers)
-         d.addCallback(self.handle_page)
-         return
+    def load_url(self, url, retry=False):
+        agent = 'Lobber Storage Node/1.0'
+        headers = {'X_LOBBER_KEY': self.lobber.lobber_key}
+        if retry:
+            r = RetryingCall(client.getPage, url.encode('ascii'), agent=agent,
+                             headers=headers)
+            d = r.start(failureTester=TwitterFailureTester())
+        else:
+            d = client.getPage(url.encode('ascii'), agent=agent,
+                               headers=headers)
+            d.addCallback(self.handle_page)
+            return
 
 
 class TorrentDownloader(StompClientFactory):
