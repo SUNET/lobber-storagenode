@@ -370,8 +370,7 @@ class TransmissionURLHandler:
         else:
             d = client.getPage(url.encode('ascii'), agent=agent,
                                headers=headers)
-            d.addCallback(self.handle_page)
-            return
+        d.addCallback(self.handle_page)
 
 
 class TorrentDownloader(StompClientFactory):
