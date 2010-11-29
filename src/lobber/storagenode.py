@@ -413,7 +413,7 @@ class TorrentDownloader(StompClientFactory):
                 hashval = info[1]
                 if type == 'add':
                     #log.msg("add %d %s" % (id,hashval))
-                    self.url_handler.load_url(self.lobber.torrent_url(id))
+                    self.url_handler.load_url(self.lobber.torrent_url(id), True)
                 
                 if type == 'delete':
                     #log.msg("delete %d %s" % (id,hashval))
