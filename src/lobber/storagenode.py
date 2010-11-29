@@ -47,7 +47,7 @@ def ignore(*args,**kwargs):
     return
 
 def logit(err):
-    log.err(err)
+    log.err("logit:" % err)
 
 class MultiPartForm(object):
     """Accumulate the data to be used when posting a form."""
@@ -161,7 +161,8 @@ class LobberClient:
                          agent="Lobber Storage Node/1.0",
                          headers={'X_LOBBER_KEY': self.lobber_key, 'Content-Type': content_type})
         d = r.start(failureTester=TwitterFailureTester())
-        d.addErrback(err_handler)
+        if err_handler:
+            d.addErrback(err_handler)
         d.addCallback(page_handler)
         return d
 
@@ -220,12 +221,12 @@ class TransmissionClient:
         try:
             tc.add_uri(torrent_file,download_dir=dst)
         except transmissionrpc.transmission.TransmissionError,msg:            
-            log.msg(msg)
+            log.err(msg)
         
         try:
             tc.verify(info_hash)
         except transmissionrpc.transmission.TransmissionError,msg:
-            log.msg(msg)
+            log.err(msg)
         
         return torrent_name, info_hash, dst
 
@@ -253,9 +254,9 @@ class TransmissionSweeper:
                 log.msg(err)
     
     def remove_on_404(self,err,t):
-        log.msg(pformat(err.value))
+        log.msg("TransmissionSweeper.remove_on_404: err=%s, t=%s" % (pformat(err.value), repr(t)))
         if err.value.status == '404':
-            log.msg("Removing unauthorized torrent %d" % t.id)
+            log.msg("Removing unauthorized torrent %d (%s)" % (t.id, repr(t)))
             fn = "%s/%s.torrent" % (self.lobber.torrent_dir,t.hashString)
             if os.path.exists(fn):
                 os.unlink(fn)
@@ -376,7 +377,7 @@ class TorrentDownloader(StompClientFactory):
         self.transmission = transmission
 
     def remove_on_404_other(self,err,id,hashval):
-        log.msg(pformat(err.value))
+        log.msg("TorrentDownloader.remove_on_404_other: %s" % pformat(err.value))
         if err.value.status == '404':
             log.msg("Purging removed torrent %d" % id)
             fn = "%s/%s.torrent" % (self.lobber.torrent_dir,hashval)
