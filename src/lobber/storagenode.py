@@ -490,8 +490,8 @@ class DropboxWatcher:
                                              method='POST',
                                              content_type=form.get_content_type(),
                                              body=form.__str__(),
-                                             err_handler=lambda err: self.kill_torrent(err,tfn),
-                                             page_handler=lambda page: self.start_torrent(page,tfn,dfn))
+                                             err_handler=lambda err: self.kill_torrent(err,tfn), # FIXME: does tfn work here?
+                                             page_handler=lambda page: self.start_torrent(page,tfn,dfn)) # FIXME: do tfn and dfn work here?
                     else:
                         self.start_torrent("",tfn,dfn)
         except Exception, err:
