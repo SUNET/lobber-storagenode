@@ -3,12 +3,10 @@ from twisted.python import log
 from twisted.web import client
 from stompservice import StompClientFactory
 import os,feedparser,json
-from BitTorrent.bencode import bdecode, bencode
 from hashlib import sha1
 import transmissionrpc
 from urlparse import urlparse
 from tempfile import NamedTemporaryFile
-import deluge.metafile, deluge.bencode
 import shutil
 import errno
 from pprint import pformat, pprint
@@ -20,6 +18,7 @@ from datetime import date
 import socket
 from twisted.internet import reactor
 from lobber.proxy import ReverseProxyTLSResource
+from lobber.torrenttools import bdecode, bencode, make_meta_file
 
 def decode_torrent(data):
     """
@@ -136,7 +135,7 @@ class LobberClient:
             comment = "%s" % name
         
         log.msg("Writing torrent file to %s" % tmptf.name)
-        deluge.metafile.make_meta_file(datapath,
+        make_meta_file(datapath,
                                        self.announce_url,
                                        2**18,
                                        comment=comment,
@@ -337,7 +336,7 @@ class TransmissionURLHandler:
             fn = self.torrent_file(info_hash)
             if not os.path.exists(fn):
                 if self.tracker_url and self.proxy_addr:
-                    d = deluge.bencode.bdecode(data)
+                    d = bdecode(data)
                     proxy_url = _rewrite_url(self.tracker_url, self.proxy_addr,
                                              'http')
                     annl = d.get('announce-list') # List of list of strings.
@@ -346,12 +345,12 @@ class TransmissionURLHandler:
                             while self.tracker_url in l:
                                 l.remove(self.tracker_url)
                                 l.insert(proxy_url)
-                        data = deluge.bencode.bencode(d)
+                        data = bencode(d)
                     else:
                         ann = d.get('announce') # String
                         if ann and ann == self.tracker_url:
                             d['announce'] = proxy_url
-                        data = deluge.bencode.bencode(d)
+                        data = bencode(d)
                 f = open(fn,"w")
                 f.write(data)
                 f.close()
