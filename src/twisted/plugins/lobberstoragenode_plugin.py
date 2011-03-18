@@ -1,17 +1,19 @@
+import os
+import sys
+from urllib import splitnport
+from urlparse import urlparse
+
 from twisted.application import service
 from twisted.python import log
 from twisted.application import internet
-from lobber.storagenode import TorrentDownloader, LobberClient, TransmissionClient, TransmissionSweeper, DropboxWatcher
 from twisted.python import usage
-import os
-from urlparse import urlparse
 from twisted.internet import task, reactor
-from zope.interface.declarations import implements
 from twisted.plugin import IPlugin
-import sys
 from twisted.web import server
-from pprint import pprint
+from zope.interface.declarations import implements
+
 from lobber.proxy import ReverseProxyTLSResource
+from lobber.storagenode import TorrentDownloader, LobberClient, TransmissionClient, TransmissionSweeper, DropboxWatcher
 
 class Options(usage.Options):
 
@@ -128,12 +130,13 @@ class MyServiceMaker(object):
             self.dropbox.start(5,True)
 
         if options['trackerProxyTrackerUrl']:
-            from urllib import splittype, splithost, splitnport
-            x = splithost(splittype(options['trackerProxyTrackerUrl'])[1])[0]
-            tracker_host, tracker_port = splitnport(x, 443)
+            netloc, path = urlparse(options['trackerProxyTrackerUrl'])[1:3]
+            tracker_host, tracker_port = splitnport(netloc, 443)
             proxy = server.Site(
                 ReverseProxyTLSResource(
-                    tracker_host, tracker_port, '', tls=True,
+                    tracker_host, tracker_port, '',
+                    path_rewrite=[['[^\?]+', path]],
+                    tls=True,   # FIXME: Base on urlparse()[0].
                     headers={'X_LOBBER_KEY': options['lobberKey']}))
             bindto = options['trackerProxyListenOn'].split(':')
             bindto_host = bindto[0]

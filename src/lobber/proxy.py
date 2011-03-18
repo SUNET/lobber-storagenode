@@ -4,9 +4,11 @@ Created on Nov 3, 2010
 @author: leifj
 '''
 
+import re
 import urlparse
 from urllib import quote as urlquote
 
+from twisted.python import log
 from twisted.internet import reactor, ssl
 from twisted.web.resource import Resource
 from twisted.web.server import NOT_DONE_YET
@@ -32,7 +34,8 @@ class ReverseProxyTLSResource(Resource):
     proxyClientFactoryClass = ProxyClientFactory
 
 
-    def __init__(self, host, port, path, reactor=reactor, tls=False, headers={}):
+    def __init__(self, host, port, path, path_rewrite=None, reactor=reactor,
+                 tls=False, headers={}):
         """
         @param host: the host of the web server to proxy.
         @type host: C{str}
@@ -46,6 +49,9 @@ class ReverseProxyTLSResource(Resource):
             be proxied to B{/foo/bar}.  Any required encoding of special
             characters (such as " " or "/") should have been done already.
 
+        @param path_rewrite: list of lists with two regexp strings
+        used for rewriting the path.
+
         @param tls: use tls or not
 
         @type path: C{str}
@@ -54,10 +60,10 @@ class ReverseProxyTLSResource(Resource):
         self.host = host
         self.port = port
         self.path = path
+        self.path_rewrite = path_rewrite
         self.tls = tls
         self.reactor = reactor
         self.headers = headers
-
 
     def getChild(self, path, request):
         """
@@ -69,6 +75,7 @@ class ReverseProxyTLSResource(Resource):
             self.host, 
             self.port, 
             self.path + '/' + urlquote(path, safe=""),
+            self.path_rewrite,
             self.reactor,
             self.tls,
             self.headers)
@@ -86,18 +93,19 @@ class ReverseProxyTLSResource(Resource):
             host = "%s:%d" % (self.host, self.port)
         request.received_headers['host'] = host
         request.content.seek(0, 0)
-        qs = urlparse.urlparse(request.uri)[4]
+
+        path, _, qs = urlparse.urlparse(request.uri)[2:5]
+        if path and self.path_rewrite:
+            for pattern, repl in self.path_rewrite:
+                path = re.sub(pattern, repl, path, 1)
         if qs:
-            rest = self.path + '?' + qs
+            rest = path + '?' + qs
         else:
-            rest = self.path
+            rest = path
             
         for key,value in self.headers.items():
-            pprint("%s=%s" % (key,value))
             request.requestHeaders.setRawHeaders(key,[value])
         
-        pprint(request.getAllHeaders())
-            
         clientFactory = self.proxyClientFactoryClass(
             request.method, rest, request.clientproto,
             request.getAllHeaders(), request.content.read(), request)

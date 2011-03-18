@@ -3,12 +3,10 @@ from twisted.python import log
 from twisted.web import client
 from stompservice import StompClientFactory
 import os,feedparser,json
-from BitTorrent.bencode import bdecode, bencode
 from hashlib import sha1
 import transmissionrpc
 from urlparse import urlparse
 from tempfile import NamedTemporaryFile
-import deluge.metafile, deluge.bencode
 import shutil
 import errno
 from pprint import pformat, pprint
@@ -20,6 +18,7 @@ from datetime import date
 import socket
 from twisted.internet import reactor
 from lobber.proxy import ReverseProxyTLSResource
+from lobber.torrenttools import bdecode, bencode, make_meta_file
 
 def decode_torrent(data):
     """
@@ -136,7 +135,7 @@ class LobberClient:
             comment = "%s" % name
         
         log.msg("Writing torrent file to %s" % tmptf.name)
-        deluge.metafile.make_meta_file(datapath,
+        make_meta_file(datapath,
                                        self.announce_url,
                                        2**18,
                                        comment=comment,
@@ -170,6 +169,7 @@ class TransmissionClient:
     def __init__(self,rpcurl="http://transmission:transmission@localhost:9091",downloads_dir="/var/lib/transmission-daemon/downloads"):
         self.rpc = urlparse(rpcurl)
         self.downloads_dir = downloads_dir
+        self.hashmap = {}           # hashmap[hash] --> torrent object
         
     def client(self):
         return transmissionrpc.Client(address=self.rpc.hostname,
@@ -230,6 +230,40 @@ class TransmissionClient:
         
         return torrent_name, info_hash, dst
 
+
+class cb_wrapper(object):
+    def __init__(self, lobber, transmission, thing):
+        self._lobber = lobber
+        self._transmission = transmission
+        self._thing = thing
+
+    def _remove_torrent(self, t):
+        lobber = self._lobber
+        transmission = self._transmission
+        log.err("remove_torrent: %d" % t.id)
+        fn = "%s/%s.torrent" % (lobber.torrent_dir, t.hashString)
+        if os.path.exists(fn):
+            os.unlink(fn)
+        tc = transmission.client()
+        tc.remove(t.id, delete_data=True)
+        shutil.rmtree(transmission.unique_path(t.hashString), True)
+
+    def ok(self, data):
+        log.err("cb_wrapper.ok: %s" % data)
+        assert(isinstance(self._thing, tuple))
+        assert(len(self._thing) == 2)
+        pred, t = self._thing
+        if pred(data):
+            self._remove_torrent(t)
+
+    def err(self, err):
+        log.err("cb_wrapper.err: %s" % err)
+        assert(isinstance(self._thing, transmissionrpc.Torrent))
+        t = self._thing
+        if err.value.status == '404':
+            log.msg("Removing 404 torrent %d (%s)" % (t.id, repr(t)))
+            self._remove_torrent(t)
+
 class TransmissionSweeper:
     def __init__(self,lobber,transmission, remove_limit=0, entitlement="urn:x-lobber:storagenode"):
         self.transmission = transmission
@@ -237,56 +271,42 @@ class TransmissionSweeper:
         self.remove_limit = remove_limit
         self.entitlement = entitlement
     
-    def remove_if_done(self,data,id,hashString):
+    def remove_if_done_p(self, data):
         if data:
             try:
                 r = json.loads(data)
                 log.msg("remove_if_done: %s" % pformat(r))
                 if int(self.remove_limit) <= int(r['count']):
-                    log.msg("Removing torrent %d" % id)
-                    fn = "%s/%s.torrent" % (self.lobber.torrent_dir,hashString)
-                    if os.path.exists(fn):
-                        os.unlink(fn)
-                    tc = self.transmission.client()
-                    tc.remove(id,delete_data=True)
-                    shutil.rmtree(self.transmission.unique_path(hashString), True)
+                    return True
             except Exception,err:
                 log.err(err)
-    
-    def remove_on_404(self,err,t):
-        log.msg("TransmissionSweeper.remove_on_404: err=%s, t=%s" % (pformat(err.value), repr(t)))
-        if err.value.status == '404':
-            log.msg("Removing unauthorized torrent %d (%s)" % (t.id, repr(t)))
-            fn = "%s/%s.torrent" % (self.lobber.torrent_dir,t.hashString)
-            if os.path.exists(fn):
-                os.unlink(fn)
-            tc = self.transmission.client()
-            tc.remove(t.id,delete_data=True)
-            shutil.rmtree(self.transmission.unique_path(t.hashString), True)
+        return False
     
     def clean_done(self):
-        class errwrapper(object):
-            def __init__(self, sweeper, transmission_torrent):
-                self._sweeper = sweeper
-                self._t = transmission_torrent
-            def err(self, err):
-                self._sweeper.remove_on_404(err, self._t)
-
+        self.transmission.hashmap = {}
         tc = self.transmission.client()
         for t in tc.list().values():
             #log.msg("clean_done [%d] %s %s %s" % (t.id,t.hashString,t.name,t.status))
+            self.transmission.hashmap[t.hashString] = t
             tc.reannounce(t.id)
             tc.change(t.id,seedRatioMode=2,uploadLimited=False,downloadLimited=False)
             if t.status == 'seeding':
                 self.lobber.api_call("/torrent/ihaz/%s" % t.hashString)
                 if self.remove_limit > 0:
-                    self.lobber.api_call("/torrent/hazcount/%s/%s" % (t.hashString,self.entitlement), 
-                                         page_handler=lambda page: self.remove_if_done(page,t.id,t.hashString), 
-                                         err_handler=logit)
+                    self.lobber.api_call(
+                        "/torrent/hazcount/%s/%s" % (t.hashString,
+                                                     self.entitlement), 
+                        page_handler=cb_wrapper(self.lobber,
+                                                self.transmission,
+                                                (self.remove_if_done_p, t)).ok,
+                        err_handler=logit)
                 
             d = self.lobber.api_call("/torrent/exists/%s" % t.hashString,
-                                     err_handler=errwrapper(self, t).err)
-
+                                     err_handler=cb_wrapper(
+                                         self.lobber, self.transmission, t).err)
+        if False:               # DEBUG
+            for h, t in self.transmission.hashmap.iteritems():
+                log.err("clean_done: hashmap[%s] = %s" % (h, t))
         
                 
 def _rewrite_url(url, new_addr, new_proto=None):
@@ -316,7 +336,7 @@ class TransmissionURLHandler:
             fn = self.torrent_file(info_hash)
             if not os.path.exists(fn):
                 if self.tracker_url and self.proxy_addr:
-                    d = deluge.bencode.bdecode(data)
+                    d = bdecode(data)
                     proxy_url = _rewrite_url(self.tracker_url, self.proxy_addr,
                                              'http')
                     annl = d.get('announce-list') # List of list of strings.
@@ -325,12 +345,12 @@ class TransmissionURLHandler:
                             while self.tracker_url in l:
                                 l.remove(self.tracker_url)
                                 l.insert(proxy_url)
-                        data = deluge.bencode.bencode(d)
+                        data = bencode(d)
                     else:
                         ann = d.get('announce') # String
                         if ann and ann == self.tracker_url:
                             d['announce'] = proxy_url
-                        data = deluge.bencode.bencode(d)
+                        data = bencode(d)
                 f = open(fn,"w")
                 f.write(data)
                 f.close()
@@ -383,16 +403,6 @@ class TorrentDownloader(StompClientFactory):
         self.lobber = lobber
         self.transmission = transmission
 
-    def remove_on_404_other(self,err,id,hashval):
-        log.msg("TorrentDownloader.remove_on_404_other: %s" % pformat(err.value))
-        if err.value.status == '404':
-            log.msg("Purging removed torrent %d" % id)
-            fn = "%s/%s.torrent" % (self.lobber.torrent_dir,hashval)
-            if os.path.exists(fn):
-                os.unlink(fn)
-            tc = self.transmission.client()
-            tc.remove(hashval,delete_data=True)
-
     def recv_connected(self, msg):
         for dst in self.destinations:
             log.msg("Subscribe to %s" % dst)
@@ -401,24 +411,32 @@ class TorrentDownloader(StompClientFactory):
     def recv_message(self, msg):
         try:
             body = msg.get('body').strip()
-            notice = json.loads(body)
-            if notice is None:
-                log.msg("Got an unknown message")
-                return
-            
-            log.msg("stomp msg: " % pformat(notice))
-            for type,info in notice.iteritems():
-                id = info[0]
-                hashval = info[1]
-                if type == 'add':
-                    #log.msg("add %d %s" % (id,hashval))
-                    self.url_handler.load_url(self.lobber.torrent_url(id), True)
-                
-                if type == 'delete':
-                    #log.msg("delete %d %s" % (id,hashval))
-                    self.lobber.api_call("/torrent/exists/%s" % hashval,err_handler=lambda err: self.remove_on_404_other(err,id,hashval))
         except Exception,err:
-            log.err(err)
+            log.err('recv_message: msg.get: %s' % repr(err))
+        try:
+            notice = json.loads(body)
+        except Exception,err:
+            log.err('recv_message: json.loads: %s' % repr(err))
+
+        if notice is None:
+            err.msg("recv_message: Got an unknown message: %s" % repr(msg))
+            return
+            
+        log.err("recv_message: stomp msg: %s" % pformat(notice))
+        for type, info in notice.iteritems():
+            id = info[0]
+            hashval = info[1].strip()
+            if type == 'add':
+                self.url_handler.load_url(self.lobber.torrent_url(id), True)
+            if type == 'delete':
+                t = self.transmission.hashmap.get(hashval)
+                log.err("recv_message: t=%s" % repr(t))
+                if t:
+                    self.lobber.api_call(
+                        "/torrent/exists/%s" % hashval,
+                        err_handler=cb_wrapper(self.lobber, self.transmission, t).err)
+                else:
+                    log.err("recv_message: unable to delete unknown torrent %s" % hashval)
               
               
 class DropboxWatcher:
@@ -471,8 +489,8 @@ class DropboxWatcher:
                                              method='POST',
                                              content_type=form.get_content_type(),
                                              body=form.__str__(),
-                                             err_handler=lambda err: self.kill_torrent(err,tfn),
-                                             page_handler=lambda page: self.start_torrent(page,tfn,dfn))
+                                             err_handler=lambda err: self.kill_torrent(err,tfn), # FIXME: does tfn work here?
+                                             page_handler=lambda page: self.start_torrent(page,tfn,dfn)) # FIXME: do tfn and dfn work here?
                     else:
                         self.start_torrent("",tfn,dfn)
         except Exception, err:
