@@ -193,7 +193,7 @@ class TransmissionClient:
         status = None
         try:
             status = tc.add_uri(torrent_file,download_dir=directory)
-        except transmissionrpc.transmission.TransmissionError,msg:
+        except transmissionrpc.TransmissionError,msg:
             status = msg
             log.msg(msg)
             pass
@@ -220,12 +220,12 @@ class TransmissionClient:
         tc = self.client()
         try:
             tc.add_uri(torrent_file,download_dir=dst)
-        except transmissionrpc.transmission.TransmissionError,msg:            
+        except transmissionrpc.TransmissionError,msg:            
             log.err(msg)
         
         try:
             tc.verify(info_hash)
-        except transmissionrpc.transmission.TransmissionError,msg:
+        except transmissionrpc.TransmissionError,msg:
             log.err(msg)
         
         return torrent_name, info_hash, dst
