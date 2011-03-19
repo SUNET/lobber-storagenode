@@ -338,7 +338,7 @@ class TransmissionURLHandler:
             if not os.path.exists(fn):
                 if self.tracker_url and self.proxy_addr:
                     d = bdecode(data)
-                    proxy_url = _rewrite_url(self.tracker_url, self.proxy_addr, 'https')
+                    proxy_url = _rewrite_url(self.tracker_url, self.proxy_addr, 'http')
                     annl = d.get('announce-list') # List of list of strings.
                     if annl:
                         for l in annl:
