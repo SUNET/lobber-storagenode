@@ -314,6 +314,7 @@ def _rewrite_url(url, new_addr, new_proto=None):
     proto, rest = splittype(url)
     addr = splithost(rest)[0]
     url = url.replace(addr, new_addr, 1)
+    url = url.replace('/announce','/uannounce')
     if new_proto:
         url = url.replace(proto, new_proto, 1)
     return url
