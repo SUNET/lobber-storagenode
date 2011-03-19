@@ -134,8 +134,10 @@ class MyServiceMaker(object):
             tracker_host, tracker_port = splitnport(netloc, 443)
             proxy = server.Site(
                 ReverseProxyTLSResource(
-                    tracker_host, tracker_port, '',
-                    path_rewrite=[['[^\?]+', path]],
+                    tracker_host, 
+                    tracker_port, 
+                    '',
+                    #path_rewrite=[['[^\?]+', path]],
                     tls=True,   # FIXME: Base on urlparse()[0].
                     headers={'X_LOBBER_KEY': options['lobberKey']}))
             bindto = options['trackerProxyListenOn'].split(':')
