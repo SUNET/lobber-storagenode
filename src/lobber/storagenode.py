@@ -245,6 +245,7 @@ class cb_wrapper(object):
         if os.path.exists(fn):
             os.unlink(fn)
         tc = transmission.client()
+        tc.stop(t.id)
         tc.remove(t.id, delete_data=True)
         shutil.rmtree(transmission.unique_path(t.hashString), True)
 
@@ -290,17 +291,6 @@ class TransmissionSweeper:
             self.transmission.hashmap[t.hashString] = t
             tc.reannounce(t.id)
             tc.change(t.id,seedRatioMode=2,uploadLimited=False,downloadLimited=False)
-            if t.status == 'seeding':
-                self.lobber.api_call("/torrent/ihaz/%s" % t.hashString)
-                if self.remove_limit > 0:
-                    self.lobber.api_call(
-                        "/torrent/hazcount/%s/%s" % (t.hashString,
-                                                     self.entitlement), 
-                        page_handler=cb_wrapper(self.lobber,
-                                                self.transmission,
-                                                (self.remove_if_done_p, t)).ok,
-                        err_handler=logit)
-                
             d = self.lobber.api_call("/torrent/exists/%s" % t.hashString,
                                      err_handler=cb_wrapper(
                                          self.lobber, self.transmission, t).err)
