@@ -150,7 +150,6 @@ case "$2" in
      ;;
    stop)
      kill `cat $L_PIDDIR/$L_PIDFILE`
-     transmission-remote -n transmission:transmission --stop
      ;;
    *)
      echo "Usage: /etc/init.d/lobberstoragenode {standalone|webapp} {start|stop}"
