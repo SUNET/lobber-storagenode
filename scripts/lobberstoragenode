@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+
+# Change the following options if they differ from your setup
+L_KEY="792bd8f0a4709e82ee3ac93f9f"
+L_HOST="dev.lobber.se"
+
+# Change these settings if you run a standalone storagenode
+L_TRACKERPROXYURL="http://dev.lobber.se/tracker/announce"
+L_TRACKERPROXYLISTEN="localhost:8080"
+L_URLS="https://dev.lobber.se/torrent/all.json"
+
+# Change these settings if you run a storagenode for your Lobber web app
+# or want to use the dropbox functionalty
+L_DROPBOXDIR="/var/run/lobberstoragenode/dropbox"
+L_REMOVELIMIT="0"
+
+# Change these settings if you want to use the dropbox functionality for
+# manual torrent loading
+L_USEDROPBOX="False"
+L_REGISTER="True"
+L_ANNOUNCEURL="https://dev.lobber.se/tracker/announce"
+L_ACL="urn:x-lobber:storagenode#r"
+
+# Settings that should work as default
+L_STDNOTIFY="True"
+L_STOMPURL="stomp://localhost:61613"
+L_TORRENTDIR="/var/run/lobberstoragenode/torrents"
+L_TRANSMISSIONDLDIR="/var/lib/transmission-daemon/downloads"
+L_TRANSMISSIONRPC="http://transmission:transmission@localhost:9091"
+L_USER="debian-transmission"
+L_GROUP_PERM="debian-transmission"
+L_RUNDIR="/var/run/lobberstoragenode"
+L_PIDDIR="/var/run/lobberstoragenode"
+L_PIDFILE="lobberstoragenode.pid"
+L_LOG="--syslog --prefix lobberstoragenode"
+#L_LOG="--logfile /var/log/lobberstoragenode.log"
+
+if [ -f /etc/config.d/lobber ]; then
+   . /etc/config.d/lobber
+fi
+
+if [ -f /etc/defaults/lobber ]; then
+   . /etc/defaults/lobber
+fi
+
+L_OPTS="$L_LOG --pidfile $L_PIDDIR/$L_PIDFILE --rundir $L_RUNDIR"
+L_OPTS="${L_OPTS} lobberstoragenode"
+
+if [ "x$L_KEY" != "x" ]; then
+   L_OPTS="${L_OPTS} --lobberKey=$L_KEY"
+else
+   echo "You need to provide a Lobber key to run the storage node."
+   exit 1
+fi
+
+if [ "x$L_HOST" != "x" ]; then
+   L_OPTS="${L_OPTS} --lobberHost=$L_HOST"
+else
+   echo "You need to provide a Lobber host to run the storage node."
+   exit 1
+fi
+
+if [ "$L_STDNOTIFY" != "False" ]; then
+   L_OPTS="${L_OPTS} --standardNotifications"
+fi
+
+if [ "x$L_STOMPURL" != "x" ]; then
+   L_OPTS="${L_OPTS} --stompUrl=$L_STOMPURL"
+fi
+
+if [ "x$L_TORRENTDIR" != "x" ]; then
+   L_OPTS="${L_OPTS} --torrentDir=$L_TORRENTDIR"
+fi
+
+if [ "x$L_TRANSMISSIONDLDIR" != "x" ]; then
+   L_OPTS="${L_OPTS} --transmissionDownloadsDir=$L_TRANSMISSIONDLDIR"
+fi
+
+if [ "x$L_TRANSMISSIONRPC" != "x" ]; then
+   L_OPTS="${L_OPTS} --transmissionRpc=$L_TRANSMISSIONRPC"
+fi
+
+
+case "$1" in
+  standalone)
+     if [ "x$L_TRACKERPROXYURL" != "x" ]; then
+        L_OPTS="${L_OPTS} --trackerProxyTrackerUrl=$L_TRACKERPROXYURL"
+     fi
+
+     if [ "x$L_TRACKERPROXYLISTEN" != "x" ]; then
+        L_OPTS="${L_OPTS} --trackerProxyListenOn=$L_TRACKERPROXYLISTEN"
+     fi
+
+     if [ "x$L_URLS" != "x" ]; then
+        L_OPTS="${L_OPTS} $L_URLS"
+     fi
+     ;;
+  webapp)
+     if [ "x$L_DROPBOXDIR" != "x" ]; then
+        L_OPTS="${L_OPTS} --dropbox=$L_DROPBOXDIR"
+     else
+        echo "You need to provide a dropbox directory when running a storage node in webapp mode."
+        exit 1
+     fi
+
+     if [ "x$L_REMOVELIMIT" != "x" ]; then
+        L_OPTS="${L_OPTS} --removeLimit=$L_REMOVELIMIT"
+     fi
+     ;;
+  *)
+     echo "Usage: /etc/init.d/lobberstoragenode {standalone|webapp} {start|stop}"
+     exit 1
+     ;;
+esac
+
+if [ "$L_USEDROPBOX" != "False" ]; then
+  if [ "$L_REGISTER" != "False" ]; then
+     L_OPTS="${L_OPTS} --register"
+  fi
+
+  if [ "x$L_ANNOUNCEURL" != "x" ]; then
+     L_OPTS="${L_OPTS} --announceUrl=$L_ANNOUNCEURL"
+  fi
+
+  if [ "x$L_ACL" != "x" ]; then
+     L_OPTS="${L_OPTS} --acl=$L_ACL"
+  fi
+fi
+
+case "$2" in
+  start)
+
+     [ -d $L_TORRENTDIR ] || mkdir -p $L_TORRENTDIR
+     chown $L_USER:$L_GROUP_PERM $L_TORRENTDIR
+     chmod 770 $L_TORRENTDIR
+
+     [ -d $L_RUNDIR ] || mkdir -p $L_RUNDIR
+     chown $L_USER:$L_GROUP_PERM $L_RUNDIR
+     chmod 770 $L_RUNDIR
+
+     [ -d $L_PIDDIR ] || mkdir $L_PIDDIR
+     chown $L_USER:$L_GROUP_PERM $L_PIDDIR
+     chmod 770 $L_PIDDIR
+
+     cd $L_PIDDIR
+
+     sudo -u $L_USER twistd $L_OPTS $L_URLS
+     transmission-remote -n transmission:transmission -GSR #seed forever
+     transmission-remote -n transmission:transmission -t all -s #start all (just in case)
+     ;;
+   stop)
+     kill `cat $L_PIDDIR/$L_PIDFILE`
+     transmission-remote -n transmission:transmission --stop
+     ;;
+   *)
+     echo "Usage: /etc/init.d/lobberstoragenode {standalone|webapp} {start|stop}"
+     exit 1
+     ;;
+esac
