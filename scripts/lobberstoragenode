@@ -1,15 +1,29 @@
-#!/usr/bin/env bash
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          lobberstoragenode
+# Required-Start:    $local_fs $remote_fs
+# Required-Stop:     $local_fs $remote_fs
+# Should-Start:      $network
+# Should-Stop:       $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Lobber Storage Node.
+# Description:       Starts the Lobber Storage Node in either standalone
+#                    or webapp mode.
+### END INIT INFO
 
 # Change the following options if they differ from your setup
-L_KEY="792bd8f0a4709e82ee3ac93f9f"
-L_HOST="dev.lobber.se"
+L_KEY=""
+L_HOST=""
 
-# Change these settings if you run a standalone storagenode
-L_TRACKERPROXYURL="http://dev.lobber.se/tracker/announce"
+# Change if you want the storage node to monitor any URLs
+L_URLS=""
+
+# Change these settings if you run a standalone storage node
+L_TRACKERPROXYURL="https://tracker/tracker/announce"
 L_TRACKERPROXYLISTEN="localhost:8080"
-L_URLS="https://dev.lobber.se/torrent/all.json"
 
-# Change these settings if you run a storagenode for your Lobber web app
+# Change these settings if you run a storage node for your Lobber web app
 # or want to use the dropbox functionalty
 L_DROPBOXDIR="/var/run/lobberstoragenode/dropbox"
 L_REMOVELIMIT="0"
@@ -18,7 +32,7 @@ L_REMOVELIMIT="0"
 # manual torrent loading
 L_USEDROPBOX="False"
 L_REGISTER="True"
-L_ANNOUNCEURL="https://dev.lobber.se/tracker/announce"
+L_ANNOUNCEURL="https://tracker/tracker/announce"
 L_ACL="urn:x-lobber:storagenode#r"
 
 # Settings that should work as default
