@@ -8,7 +8,7 @@ L_HOST=""
 L_URLS=""
 
 # Change these settings if you run a standalone storage node
-L_TRACKERPROXYURL="https://tracker/tracker/announce"
+L_TRACKERPROXYURL="https://tracker:443/tracker/uannounce"
 L_TRACKERPROXYLISTEN="localhost:8080"
 
 # Change these settings if you run a storage node for your Lobber web app
