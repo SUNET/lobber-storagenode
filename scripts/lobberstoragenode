@@ -1,16 +1,4 @@
 #!/bin/sh
-### BEGIN INIT INFO
-# Provides:          lobberstoragenode
-# Required-Start:    $local_fs $remote_fs
-# Required-Stop:     $local_fs $remote_fs
-# Should-Start:      $network
-# Should-Stop:       $network
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
-# Short-Description: Lobber Storage Node.
-# Description:       Starts the Lobber Storage Node in either standalone
-#                    or webapp mode.
-### END INIT INFO
 
 # Change the following options if they differ from your setup
 L_KEY=""
