@@ -98,11 +98,14 @@ case "$1" in
   webapp)
      if [ "x$L_DROPBOXDIR" != "x" ]; then
         L_OPTS="${L_OPTS} --dropbox=$L_DROPBOXDIR"
+
+        [ -d $L_DROPBOXDIR ] || mkdir -p $L_DROPBOXDIR
+        chown $L_USER:$L_GROUP_PERM $L_DROPBOXDIR
+        chmod 770 $L_DROPBOXDIR
      else
         echo "You need to provide a dropbox directory when running a storage node in webapp mode."
         exit 1
      fi
-
      if [ "x$L_REMOVELIMIT" != "x" ]; then
         L_OPTS="${L_OPTS} --removeLimit=$L_REMOVELIMIT"
      fi
@@ -114,6 +117,17 @@ case "$1" in
 esac
 
 if [ "$L_USEDROPBOX" != "False" ]; then
+  if [ "x$L_DROPBOXDIR" != "x" ]; then
+     L_OPTS="${L_OPTS} --dropbox=$L_DROPBOXDIR"
+
+     [ -d $L_DROPBOXDIR ] || mkdir -p $L_DROPBOXDIR
+     chown $L_USER:$L_GROUP_PERM $L_DROPBOXDIR
+     chmod 770 $L_DROPBOXDIR
+  else
+     echo "You need to provide a dropbox directory when L_USEDROPBOX is True."
+     exit 1
+  fi
+
   if [ "$L_REGISTER" != "False" ]; then
      L_OPTS="${L_OPTS} --register"
   fi
