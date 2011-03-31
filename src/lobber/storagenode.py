@@ -208,6 +208,7 @@ class TransmissionClient:
             dst = self.unique_path(info_hash)
             if not os.path.isdir(dst):
                 mkdir_p(dst)
+            os.chmod(dst, 755)
             shutil.move(datapath, "%s%s%s" % (dst,os.sep,torrent_name))
         else:
             datapath_parts = datapath.split(os.sep)
