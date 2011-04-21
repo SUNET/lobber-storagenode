@@ -1,5 +1,24 @@
 #!/bin/sh
 
+### BEGIN INIT INFO
+# Provides:          lobberstoragenode
+# Required-Start:    $local_fs $remote_fs
+# Required-Stop:     $local_fs $remote_fs
+# Should-Start:      $network
+# Should-Stop:       $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Lobber Storage Node.
+# Description:       Starts the Lobber Storage Node in either standalone
+#                    or webapp mode.
+### END INIT INFO
+
+# Lobber storage node init script
+
+# Storage node mode
+L_MODE="standalone"
+#L_MODE="webapp"
+
 # Change the following options if they differ from your setup
 L_KEY=""
 L_HOST=""
@@ -76,6 +95,10 @@ fi
 
 if [ "x$L_TRANSMISSIONDLDIR" != "x" ]; then
    L_OPTS="${L_OPTS} --transmissionDownloadsDir=$L_TRANSMISSIONDLDIR"
+
+   chown $L_USER:$L_GROUP_PERM $L_TRANSMISSIONDLDIR
+   chmod 770 $L_TRANSMISSIONDLDIR
+   chmod g+s $L_TRANSMISSIONDLDIR
 fi
 
 if [ "x$L_TRANSMISSIONRPC" != "x" ]; then
@@ -83,7 +106,7 @@ if [ "x$L_TRANSMISSIONRPC" != "x" ]; then
 fi
 
 
-case "$1" in
+case "$L_MODE" in
   standalone)
      if [ "x$L_TRACKERPROXYURL" != "x" ]; then
         L_OPTS="${L_OPTS} --trackerProxyTrackerUrl=$L_TRACKERPROXYURL"
@@ -104,6 +127,7 @@ case "$1" in
         [ -d $L_DROPBOXDIR ] || mkdir -p $L_DROPBOXDIR
         chown $L_USER:$L_GROUP_PERM $L_DROPBOXDIR
         chmod 770 $L_DROPBOXDIR
+        chmod g+s $L_DROPBOXDIR
      else
         echo "You need to provide a dropbox directory when running a storage node in webapp mode."
         exit 1
@@ -125,6 +149,7 @@ if [ "$L_USEDROPBOX" != "False" ]; then
      [ -d $L_DROPBOXDIR ] || mkdir -p $L_DROPBOXDIR
      chown $L_USER:$L_GROUP_PERM $L_DROPBOXDIR
      chmod 770 $L_DROPBOXDIR
+     chmod g+s $L_DROPBOXDIR
   else
      echo "You need to provide a dropbox directory when L_USEDROPBOX is True."
      exit 1
@@ -145,7 +170,6 @@ fi
 
 case "$2" in
   start)
-
      [ -d $L_TORRENTDIR ] || mkdir -p $L_TORRENTDIR
      chown $L_USER:$L_GROUP_PERM $L_TORRENTDIR
      chmod 770 $L_TORRENTDIR
@@ -166,6 +190,7 @@ case "$2" in
      ;;
    stop)
      kill `cat $L_PIDDIR/$L_PIDFILE`
+     echo "lobberstoragenode stopped."
      ;;
    *)
      echo "Usage: /etc/init.d/lobberstoragenode {standalone|webapp} {start|stop}"
