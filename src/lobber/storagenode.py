@@ -432,23 +432,24 @@ class TorrentDownloader(StompClientFactory):
               
 class DropboxWatcher:
     
-    def __init__(self,lobber,transmission,dropbox,register=True,acl=None,publicAccess=False):
+    def __init__(self,lobber,transmission,dropbox,register=True,acl=None,publicAccess=False,move=True):
         self.lobber = lobber
         self.transmission = transmission
         self.dropbox = dropbox
         self.register = register
         self.acl = acl
         self.publicAccess = publicAccess
+        self.move = move
     
     def kill_torrent(self,err,torrent_file_name):
         log.err("an error occured - %s - cancelling torrent upload" \
                 % pformat(err))
         os.unlink(torrent_file_name)
         
-    def start_torrent(self,data,torrent_file,data_file):
+    def start_torrent(self,data,torrent_file,data_file,move=True):
         log.msg("starting torrent...")
         log.msg(data)
-        self.transmission.upload(torrent_file,data_file,move=True)
+        self.transmission.upload(torrent_file,data_file,move)
         os.unlink(torrent_file)
         
     def watch_dropbox(self):
@@ -481,9 +482,9 @@ class DropboxWatcher:
                                              content_type=form.get_content_type(),
                                              body=form.__str__(),
                                              err_handler=lambda err: self.kill_torrent(err,tfn), # FIXME: does tfn work here?
-                                             page_handler=lambda page: self.start_torrent(page,tfn,dfn)) # FIXME: do tfn and dfn work here?
+                                             page_handler=lambda page: self.start_torrent(page,tfn,dfn,self.move)) # FIXME: do tfn and dfn work here?
                     else:
-                        self.start_torrent("",tfn,dfn)
+                        self.start_torrent("",tfn,dfn,self.move)
         except Exception, err:
             log.err(err)
             raise

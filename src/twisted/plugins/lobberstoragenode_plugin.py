@@ -50,7 +50,9 @@ class Options(usage.Options):
         ['standardNotifications', 'n',
          "Add standard notificiation destinations"],
         ['register', 'R',
-         "Register new torrents with lobber"]
+         "Register new torrents with lobber"],
+        ['keepData','B',
+         "Serve data from the dropbox instead of moving it to the transmission data directory."]
     ]
     
     def parseArgs(self,*args):
@@ -125,7 +127,8 @@ class MyServiceMaker(object):
             dropboxWatcher = DropboxWatcher(lobber,transmission,
                                             options['dropbox'],
                                             register=options['register'],
-                                            acl=options['acl'])
+                                            acl=options['acl'],
+                                            move=not options['keepData'])
             self.dropbox = task.LoopingCall(dropboxWatcher.watch_dropbox)
             self.dropbox.start(5,True)
 
