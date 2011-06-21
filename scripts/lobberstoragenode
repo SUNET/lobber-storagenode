@@ -9,8 +9,7 @@
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: Lobber Storage Node.
-# Description:       Starts the Lobber Storage Node in either standalone
-#                    or webapp mode.
+# Description:       Starts and stops the Lobber Storage Node.
 ### END INIT INFO
 
 # Lobber storage node init script
@@ -137,7 +136,7 @@ case "$L_MODE" in
      fi
      ;;
   *)
-     echo "Usage: /etc/init.d/lobberstoragenode {standalone|webapp} {start|stop}"
+     echo "Usage: /etc/init.d/lobberstoragenode {start|stop}"
      exit 1
      ;;
 esac
@@ -168,7 +167,7 @@ if [ "$L_USEDROPBOX" != "False" ]; then
   fi
 fi
 
-case "$2" in
+case "$1" in
   start)
      [ -d $L_TORRENTDIR ] || mkdir -p $L_TORRENTDIR
      chown $L_USER:$L_GROUP_PERM $L_TORRENTDIR
@@ -193,7 +192,7 @@ case "$2" in
      echo "lobberstoragenode stopped."
      ;;
    *)
-     echo "Usage: /etc/init.d/lobberstoragenode {standalone|webapp} {start|stop}"
+     echo "Usage: /etc/init.d/lobberstoragenode {start|stop}"
      exit 1
      ;;
 esac
