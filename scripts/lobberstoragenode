@@ -55,12 +55,16 @@ L_PIDFILE="lobberstoragenode.pid"
 L_LOG="--syslog --prefix lobberstoragenode"
 #L_LOG="--logfile /var/log/lobberstoragenode.log"
 
-if [ -f /etc/config.d/lobber ]; then
-   . /etc/config.d/lobber
+if [ -f /etc/config.d/lobberstoragenode ]; then
+   . /etc/config.d/lobberstoragenode
 fi
 
-if [ -f /etc/defaults/lobber ]; then
-   . /etc/defaults/lobber
+if [ -f /etc/defaults/lobberstoragenode ]; then
+   . /etc/defaults/lobberstoragenode
+fi
+
+if [ -f /etc/lobberstoragenode/config ]; then
+   . /etc/config.d/lobberstoragenode/config
 fi
 
 L_OPTS="$L_LOG --pidfile $L_PIDDIR/$L_PIDFILE --rundir $L_RUNDIR"
