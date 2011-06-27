@@ -23,6 +23,8 @@ __author__ = 'Leif Johansson'
 
 
 import sys
+import os
+import shutil
 
 try:
     import twisted
@@ -31,6 +33,31 @@ except ImportError:
                      "have installed the Twisted core package.")
 
 from distutils.core import setup
+
+def install_conf():
+    filename = 'config'
+    src_dir = '%s/conf' % os.getcwd()
+    dst_dir = '/etc/lobberstoragenode'
+    try:
+        os.mkdir(dst_dir)
+    except OSError:
+        pass
+    try:
+        os.stat('%s/%s' % (dst_dir, filename))
+    except OSError:
+        shutil.copyfile('%s/%s' % (src_dir,filename), 
+                        '%s/%s' % (dst_dir,filename))
+                        
+def install_start_script():
+    filename = 'lobberstoragenode'
+    src_dir = '%s/scripts' % os.getcwd()
+    dst_dir = '/etc/init.d'
+    try:
+        os.stat('%s/%s' % (dst_dir, filename))
+    except OSError:
+        shutil.copyfile('%s/%s' % (src_dir,filename),
+                        '%s/%s' % (dst_dir,filename))
+        os.chmod('%s/%s' % (dst_dir,filename), 0755)
 
 def refresh_plugin_cache():
     from twisted.plugin import IPlugin, getPlugins
@@ -67,3 +94,5 @@ if __name__ == '__main__':
         **extraMeta)
     
     refresh_plugin_cache()
+    install_conf()
+    install_start_script()
