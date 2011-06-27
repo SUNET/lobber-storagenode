@@ -1,0 +1,52 @@
+#####################################################################
+#                                                                   #
+# Lobber Storagenode Configuration file.                            #
+# https://portal.nordu.net/display/LOBBER/Lobber                    #
+#                                                                   #
+# The startup script will look for these settings in                #
+# /etc/lobberstoragenode/conf, /etc/defaults/lobberstoragenode and  #
+# /etc/config.d/lobberstoragenode before using the default values   #
+# in /etc/init.d/lobberstoragenode.                                 #
+#                                                                   #
+#####################################################################
+
+# Storage node mode
+L_MODE="standalone"
+#L_MODE="webapp"
+
+# Change the following options if they differ from your setup
+L_KEY=""
+L_HOST=""
+
+# Change if you want the storage node to monitor any URLs
+L_URLS=""
+
+# Change these settings if you run a standalone storage node
+L_TRACKERPROXYURL="https://tracker:443/tracker/uannounce"
+L_TRACKERPROXYLISTEN="localhost:8080"
+
+# Change these settings if you run a storage node for your Lobber web app
+# or want to use the dropbox functionalty
+L_DROPBOXDIR="/var/run/lobberstoragenode/dropbox"
+L_REMOVELIMIT="0"
+
+# Change these settings if you want to use the dropbox functionality for
+# manual torrent loading
+L_USEDROPBOX="False"
+L_REGISTER="True"
+L_ANNOUNCEURL="https://tracker/tracker/announce"
+L_ACL="urn:x-lobber:storagenode#r"
+
+# Settings that should work as default
+L_STDNOTIFY="True"
+L_STOMPURL="stomp://localhost:61613"
+L_TORRENTDIR="/var/run/lobberstoragenode/torrents"
+L_TRANSMISSIONDLDIR="/var/lib/transmission-daemon/downloads"
+L_TRANSMISSIONRPC="http://transmission:transmission@localhost:9091"
+L_USER="debian-transmission"
+L_GROUP_PERM="debian-transmission"
+L_RUNDIR="/var/run/lobberstoragenode"
+L_PIDDIR="/var/run/lobberstoragenode"
+L_PIDFILE="lobberstoragenode.pid"
+L_LOG="--syslog --prefix lobberstoragenode"
+#L_LOG="--logfile /var/log/lobberstoragenode.log"
