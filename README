@@ -1,0 +1,15 @@
+Installation
+Lobber Storage Node is a plugin for the Twisted framework so there are some
+packages that needs to be installed before the storage node can be functional.
+
+For the actual downloading of the torrent data the storage node uses 
+Transmission bittorrent client.
+
+  Prerequisites 
+    Packages from Debian repositories:
+    sudo apt-get install python-twisted-core python-twisted-web python-pip transmission-cli
+    Python modules:
+    sudo pip install stompservice feedparser transmissionrpc
+
+Configuration
+See https://portal.nordu.net/display/LOBBER/Running+a+storage+node+%28bud+light%29.
