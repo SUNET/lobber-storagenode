@@ -7,7 +7,7 @@ Transmission bittorrent client.
 
   Prerequisites 
     Packages from Debian repositories:
-    sudo apt-get install python-twisted-core python-twisted-web python-pip transmission-cli
+    sudo apt-get install python-twisted-core python-twisted-web python-pip transmission-cli transmission-daemon
     Python modules:
     sudo pip install stompservice feedparser transmissionrpc
 
