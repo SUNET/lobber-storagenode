@@ -64,7 +64,7 @@ if [ -f /etc/defaults/lobberstoragenode ]; then
 fi
 
 if [ -f /etc/lobberstoragenode/config ]; then
-   . /etc/config.d/lobberstoragenode/config
+   . /etc/lobberstoragenode/config
 fi
 
 L_OPTS="$L_LOG --pidfile $L_PIDDIR/$L_PIDFILE --rundir $L_RUNDIR"
