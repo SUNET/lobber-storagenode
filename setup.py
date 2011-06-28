@@ -30,8 +30,33 @@ try:
     import twisted
 except ImportError:
     raise SystemExit("twisted not found.  Make sure you "
-                     "have installed the Twisted core package.")
-
+                     "have installed the Twisted core package. "
+                     "Try \"sudo apt-get install python-twisted-core\".")
+try:
+    import twisted.web
+except ImportError:
+    raise SystemExit("twisted.web not found.  Make sure you "
+                     "have installed the Twisted web package. "
+                     "Try \"sudo apt-get install python-twisted-web\".")
+try:
+    import stompservice
+except ImportError:
+    raise SystemExit("stompservice not found.  Make sure you "
+                     "have installed the stompservice Python module. "
+                     "Try \"sudo pip install stompservice\".")
+try:
+    import feedparser
+except ImportError:
+    raise SystemExit("feedparser not found.  Make sure you "
+                     "have installed the feedparser Python module."
+                     "Try \"sudo pip install feedparser\".")
+try:
+    import transmissionrpc
+except ImportError:
+    raise SystemExit("transmissionrpc not found.  Make sure you "
+                     "have installed the transmissionrpc Python module."
+                     "Try \"sudo pip install transmissionrpc\".")
+                     
 from distutils.core import setup
 
 def install_conf():
@@ -47,6 +72,7 @@ def install_conf():
     except OSError:
         shutil.copyfile('%s/%s' % (src_dir,filename), 
                         '%s/%s' % (dst_dir,filename))
+    print 'Please edit %s/%s before starting the storage node.' % (dst_dir,filename)
                         
 def install_start_script():
     filename = 'lobberstoragenode'
@@ -58,6 +84,7 @@ def install_start_script():
         shutil.copyfile('%s/%s' % (src_dir,filename),
                         '%s/%s' % (dst_dir,filename))
         os.chmod('%s/%s' % (dst_dir,filename), 0755)
+    print 'Start the storage node with, sudo %s/%s start.' % (dst_dir,filename)
 
 def refresh_plugin_cache():
     from twisted.plugin import IPlugin, getPlugins
