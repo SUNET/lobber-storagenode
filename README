@@ -11,5 +11,8 @@ Transmission bittorrent client.
     Python modules:
     sudo pip install stompservice feedparser transmissionrpc
 
+  Install
+    When the prerequisites are met just run "sudo python setup.py install".
+
 Configuration
 See https://portal.nordu.net/display/LOBBER/Running+a+storage+node+%28bud+light%29.
