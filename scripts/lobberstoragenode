@@ -188,8 +188,6 @@ case "$1" in
      cd $L_PIDDIR
 
      sudo -u $L_USER twistd $L_OPTS $L_URLS
-     transmission-remote -n transmission:transmission -GSR #seed forever
-     transmission-remote -n transmission:transmission -t all -s #start all (just in case)
      ;;
    stop)
      kill `cat $L_PIDDIR/$L_PIDFILE`
