@@ -21,10 +21,13 @@ $ twistd finger --help
 
 __author__ = 'Leif Johansson'
 
-
 import sys
 import os
 import shutil
+
+python_version = int(''.join((str(i) for i in sys.version_info[0:3])))
+if not python_version >= 266:
+    raise SystemExit("Python >=2.6.6 not found.  Make sure you.")
 
 try:
     import twisted
@@ -56,7 +59,14 @@ except ImportError:
     raise SystemExit("transmissionrpc not found.  Make sure you "
                      "have installed the transmissionrpc Python module."
                      "Try \"sudo pip install transmissionrpc\".")
-                     
+
+try:
+    import OpenSSL
+except ImportError:
+    raise SystemExit("OpenSSL not found.  Make sure you "
+                     "have installed the pyopenssl Python module."
+                     "Try \"sudo pip install pyopenssl\".")
+
 from distutils.core import setup
 
 def install_conf():
@@ -73,8 +83,8 @@ def install_conf():
         shutil.copyfile('%s/%s' % (src_dir,filename), 
                         '%s/%s' % (dst_dir,filename))
     print 'Please edit %s/%s before starting the storage node.' % (dst_dir,filename)
-                        
-def install_start_script():
+
+def install_debian_start_script():
     filename = 'lobberstoragenode'
     src_dir = '%s/scripts' % os.getcwd()
     dst_dir = '/etc/init.d'
@@ -85,6 +95,22 @@ def install_start_script():
                         '%s/%s' % (dst_dir,filename))
         os.chmod('%s/%s' % (dst_dir,filename), 0755)
     print 'Start the storage node with, sudo %s/%s start.' % (dst_dir,filename)
+    
+def install_darwin_start_script():
+    bash_file = 'lobberstoragenode'
+    plist_file = 'com.lobber.storagenode.start.plist'
+    src_dir = '%s/scripts' % os.getcwd()
+    bash_dst_dir = '/usr/local/bin'
+    plist_dst_dir = '/Library/LaunchDaemons'
+    try:
+        os.stat('%s/%s' % (bash_dst_dir, bash_file))
+    except OSError:
+        shutil.copyfile('%s/%s' % (src_dir,bash_file),
+                        '%s/%s' % (bash_dst_dir,bash_file))
+        os.chmod('%s/%s' % (bash_dst_dir,bash_file), 0755)
+    shutil.copyfile('%s/%s' % (src_dir,plist_file),
+                        '%s/%s' % (plist_dst_dir,plist_file))    
+    print 'Start the storage node with, %s/%s start.' % (bash_dst_dir,bash_file)
 
 def refresh_plugin_cache():
     from twisted.plugin import IPlugin, getPlugins
@@ -122,4 +148,8 @@ if __name__ == '__main__':
     
     refresh_plugin_cache()
     install_conf()
-    install_start_script()
+    # Install os specific start script
+    if sys.platform == 'linux2':
+        install_debian_start_script()
+    elif sys.platform == 'darwin':
+        install_darwin_start_script()
