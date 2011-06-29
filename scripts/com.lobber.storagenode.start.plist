@@ -1,0 +1,13 @@
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.lobber.lobberstoragenode.start</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/lobberstoragenode</string>
+        <string>start</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true></true>
+</dict>
+</plist>
